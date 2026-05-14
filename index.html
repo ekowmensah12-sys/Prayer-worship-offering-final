@@ -290,7 +290,7 @@ function makePrayerItem() {
   return { id:uid(), title:'', yt:'', music:[''], pairs:[{point:'',scripture:''}], time:'' };
 }
 function makeOfferingItem() {
-  return { id:uid(), title:'', music:[''], pairs:[{point:'',scripture:''}], time:'' };
+  return { id:uid(), title:'', music:[''], pairs:[{point:'',scripture:''}], time:'', reference:'', minute:'' };
 }
 function makeSongItem() {
   return { id:uid(), title:'', yt:'', time:'' };
@@ -342,9 +342,11 @@ function collectPrayer() {
 function collectOffering() {
   return [...document.querySelectorAll('#offering-list .offering-card')].map(c => ({
     id:         c.dataset.id,
-    title:      c.querySelector('.p-title')?.value || '',
+    title:      c.querySelector('.p-title')?.value       || '',
     music:      [...c.querySelectorAll('.offering-music-input')].map(i => i.value),
-    time:       c.querySelector('.item-time')?.value || '',
+    reference:  c.querySelector('.o-reference')?.value    || '',
+    minute:     c.querySelector('.o-minute')?.value       || '',
+    time:       c.querySelector('.item-time')?.value      || '',
     pairs:      [...c.querySelectorAll('.pair-group')].map(g => ({
       point:     g.querySelector('.point-input')?.value     || '',
       scripture: g.querySelector('.scripture-input')?.value || '',
@@ -406,6 +408,18 @@ function buildOfferingCard(item, idx) {
         <input type="text" class="p-title" placeholder="e.g. Tithes & Offering, First Fruits…" value="${esc(item.title)}" oninput="scheduleSave()"/>
       </div>
     </div>
+    <!-- Reference link + minute -->
+    <div style="display:grid;grid-template-columns:1fr 140px;gap:10px;margin-bottom:12px;">
+      <div>
+        <div class="field-label">🔗 Reference Link</div>
+        <div class="yt-wrap">${YT_SVG}<input type="url" class="o-reference" placeholder="https://…" value="${esc(item.reference||'')}" oninput="scheduleSave()" style="padding-left:32px;"/></div>
+      </div>
+      <div>
+        <div class="field-label">📋 Minute</div>
+        <input type="text" class="o-minute" placeholder="e.g. 3" value="${esc(item.minute||'')}" oninput="scheduleSave()" style="width:100%;"/>
+      </div>
+    </div>
+
     <div class="sub-section" style="margin-bottom:12px;">
       <div class="sub-section-head">
         <span class="sub-section-label">🎵 Offering Music</span>
@@ -526,7 +540,8 @@ function removeMusic(btn) {
 }
 
 function addPair(btn) {
-  const list = btn.closest('.prayer-card').querySelector('.pairs-list');
+  const card = btn.closest('.prayer-card') || btn.closest('.offering-card');
+  const list = card.querySelector('.pairs-list');
   const div = document.createElement('div');
   div.innerHTML = pairRow({point:'',scripture:''}, list.children.length);
   list.appendChild(div.firstElementChild);
@@ -893,7 +908,7 @@ function migrateState(state) {
   (state.prayer  ||[]).forEach(i => { ensureTime(i); ensureMusic(i); ensurePairs(i); });
   (state.worship ||[]).forEach(i => ensureTime(i));
   (state.praise  ||[]).forEach(i => ensureTime(i));
-  (state.offering||[]).forEach(i => { ensureTime(i); ensureMusic(i); ensurePairs(i); });
+  (state.offering||[]).forEach(i => { ensureTime(i); ensureMusic(i); ensurePairs(i); if(!i.reference) i.reference=''; if(!i.minute) i.minute=''; });
   return state;
 }
 </script>
