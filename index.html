@@ -5,7 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Go Ye Amsterdam – Worship List</title>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet"/>
-  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script>
+// Load jsPDF with multiple fallbacks
+(function(){
+  var cdns = [
+    'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+    'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'
+  ];
+  var idx = 0;
+  function tryLoad(){
+    if(idx >= cdns.length){ console.error('All jsPDF CDNs failed'); return; }
+    var s = document.createElement('script');
+    s.src = cdns[idx++];
+    s.onerror = tryLoad;
+    document.head.appendChild(s);
+  }
+  tryLoad();
+})();
+</script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{background:#F0EDE6!important;color:#1a1a1a;font-family:'Source Sans 3',sans-serif;min-height:100vh;}
@@ -706,7 +724,10 @@ async function exportPDF() {
   btn.disabled = true; btn.textContent = '⏳ Building…';
 
   try {
-    if(!window.jspdf){ throw new Error('PDF library failed to load. Please check your internet connection and try again.'); }
+    // Wait up to 5 seconds for jsPDF to load
+    let waited = 0;
+    while(!window.jspdf && waited < 50){ await new Promise(r=>setTimeout(r,100)); waited++; }
+    if(!window.jspdf){ throw new Error('PDF library could not load. Please check your internet connection.'); }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const PW=210,PH=297,ML=15,MR=15,CW=PW-ML-MR;
@@ -731,7 +752,7 @@ async function exportPDF() {
       doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(255,240,190);
       doc.text('WORSHIP DEPARTMENT  ·  SONG DATABASE',PW/2,22,{align:'center'});
       doc.setFillColor(30,20,0);
-      doc.roundedRect(PW/2-20,26,40,8,4,4,'F');
+      doc.rect(PW/2-20,26,40,8,'F');
       doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(255,240,190);
       const mon = currentMonth().toUpperCase();
       doc.text(`${mon} ${new Date().getFullYear()}`,PW/2,31.5,{align:'center'});
@@ -755,7 +776,7 @@ async function exportPDF() {
 
       // Section heading strip
       doc.setFillColor(...C.bg);
-      doc.roundedRect(ML,y,CW,11,2,2,'F');
+      doc.rect(ML,y,CW,11,'F');
       doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(r,g,b);
       doc.text(sec.label+'  —  '+currentMonth().toUpperCase()+' '+new Date().getFullYear(),ML+5,y+7.8);
       y+=16;
@@ -779,7 +800,7 @@ async function exportPDF() {
         if(item.time){
           const timeW=doc.getTextWidth('⏱ '+item.time+' mins')+6;
           doc.setFillColor(...C.bg); doc.setDrawColor(...C.bd); doc.setLineWidth(0.3);
-          doc.roundedRect(PW-MR-timeW-2,cx-5,timeW+2,6.5,1.5,1.5,'FD');
+          doc.rect(PW-MR-timeW-2,cx-5,timeW+2,6.5,'FD');
           doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(r,g,b);
           doc.text('⏱ '+item.time+' mins',PW-MR-timeW+1,cx);
         }
@@ -886,7 +907,7 @@ async function exportPDF() {
         // Card border
         doc.setFillColor(...C.bg.map(v=>Math.min(255,v+15)));
         doc.setDrawColor(...C.bd); doc.setLineWidth(0.35);
-        doc.roundedRect(ML,cy,CW,cx-cy+4,2.5,2.5,'SD');
+        doc.rect(ML,cy,CW,cx-cy+4,'S');
         y=cx+8;
       });
     });
