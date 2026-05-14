@@ -290,7 +290,7 @@ function makePrayerItem() {
   return { id:uid(), title:'', yt:'', music:[''], pairs:[{point:'',scripture:''}], time:'' };
 }
 function makeOfferingItem() {
-  return { id:uid(), title:'', music:[''], pairs:[{point:'',scripture:''}], time:'', reference:'', minute:'' };
+  return { id:uid(), title:'', pairs:[{point:'',scripture:''}], time:'', reference:'', minute:'' };
 }
 function makeSongItem() {
   return { id:uid(), title:'', yt:'', time:'' };
@@ -343,7 +343,6 @@ function collectOffering() {
   return [...document.querySelectorAll('#offering-list .offering-card')].map(c => ({
     id:         c.dataset.id,
     title:      c.querySelector('.p-title')?.value       || '',
-    music:      [...c.querySelectorAll('.offering-music-input')].map(i => i.value),
     reference:  c.querySelector('.o-reference')?.value    || '',
     minute:     c.querySelector('.o-minute')?.value       || '',
     time:       c.querySelector('.item-time')?.value      || '',
@@ -397,8 +396,6 @@ function buildOfferingCard(item, idx) {
   d.dataset.id = item.id;
   const pairs = (item.pairs && item.pairs.length) ? item.pairs : [{point:'',scripture:''}];
   const pairsHTML = pairs.map((pair,i) => offeringScriptureRow(pair,i)).join('');
-  const musicList = (item.music && item.music.length) ? item.music : [''];
-  const musicHTML = musicList.map((m,i) => offeringMusicRow(m,i)).join('');
   d.innerHTML = `
     <button class="del-btn" onclick="deleteOfferingCard('${item.id}')" title="Remove">×</button>
     <div class="p-card-top">
@@ -420,13 +417,6 @@ function buildOfferingCard(item, idx) {
       </div>
     </div>
 
-    <div class="sub-section" style="margin-bottom:12px;">
-      <div class="sub-section-head">
-        <span class="sub-section-label">🎵 Offering Music</span>
-        <button class="sub-add-btn" onclick="addOfferingMusic(this)">+ Add Music</button>
-      </div>
-      <div class="offering-music-list">${musicHTML}</div>
-    </div>
     <div class="sub-section">
       <div class="sub-section-head">
         <span class="sub-section-label">📖 Scriptures</span>
@@ -917,7 +907,7 @@ function migrateState(state) {
   (state.prayer  ||[]).forEach(i => { ensureTime(i); ensureMusic(i); ensurePairs(i); });
   (state.worship ||[]).forEach(i => ensureTime(i));
   (state.praise  ||[]).forEach(i => ensureTime(i));
-  (state.offering||[]).forEach(i => { ensureTime(i); ensureMusic(i); ensurePairs(i); if(!i.reference) i.reference=''; if(!i.minute) i.minute=''; });
+  (state.offering||[]).forEach(i => { ensureTime(i); ensurePairs(i); if(!i.reference) i.reference=''; if(!i.minute) i.minute=''; });
   return state;
 }
 </script>
