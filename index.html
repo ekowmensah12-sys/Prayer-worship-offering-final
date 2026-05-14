@@ -127,8 +127,6 @@
     .offering-panel .pair-inner-label.point-lbl{color:#4a6e3a;}
     .prayer-panel   .pair-inner-label.script-lbl{color:#4a6090;}
     .offering-panel .pair-inner-label.script-lbl{color:#4a6090;}
-    .offering-card .pair-row:first-child{display:none;}
-    .offering-card .pair-group{padding-top:8px;}
     .sub-item{display:flex;align-items:center;gap:8px;}
     .sub-item input{flex:1;}
     .sub-del-btn{width:22px;height:22px;border-radius:50%;border:1px solid #DDD;background:#F5F0E8;color:#bbb;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .18s;}
@@ -398,7 +396,7 @@ function buildOfferingCard(item, idx) {
   d.className = 'card offering-card';
   d.dataset.id = item.id;
   const pairs = (item.pairs && item.pairs.length) ? item.pairs : [{point:'',scripture:''}];
-  const pairsHTML = pairs.map((pair,i) => pairRow(pair,i)).join('');
+  const pairsHTML = pairs.map((pair,i) => offeringScriptureRow(pair,i)).join('');
   const musicList = (item.music && item.music.length) ? item.music : [''];
   const musicHTML = musicList.map((m,i) => offeringMusicRow(m,i)).join('');
   d.innerHTML = `
@@ -498,6 +496,15 @@ function buildPrayerCard(item, idx) {
     </div>
   `;
   return d;
+}
+
+function offeringScriptureRow(pair, idx) {
+  return `<div class="pair-group">
+    <button class="pair-del-btn" onclick="removePair(this)" title="Remove">×</button>
+    <div class="pair-row">
+      <input type="text" class="scripture-input" placeholder="e.g. Malachi 3:10 – Bring the whole tithe…" value="${esc(pair.scripture||'')}" oninput="scheduleSave()"/>
+    </div>
+  </div>`;
 }
 
 function pairRow(pair, idx) {
