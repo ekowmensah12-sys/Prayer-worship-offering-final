@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Go Ye Amsterdam – Worship List</title>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{background:#F0EDE6!important;color:#1a1a1a;font-family:'Source Sans 3',sans-serif;min-height:100vh;}
@@ -706,6 +706,7 @@ async function exportPDF() {
   btn.disabled = true; btn.textContent = '⏳ Building…';
 
   try {
+    if(!window.jspdf){ throw new Error('PDF library failed to load. Please check your internet connection and try again.'); }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const PW=210,PH=297,ML=15,MR=15,CW=PW-ML-MR;
@@ -741,127 +742,151 @@ async function exportPDF() {
     const state = collectState();
 
     const sections = [
-      {key:'prayer',  label:'PRAYER',        items:state.prayer},
-      {key:'worship', label:'WORSHIP SONGS', items:state.worship},
-      {key:'praise',    label:'PRAISE SONGS',   items:state.praise},
-      {key:'offering',  label:'OFFERING',       items:state.offering||[]},
+      {key:'prayer',   label:'PRAYER',        items:state.prayer        ||[]},
+      {key:'worship',  label:'WORSHIP SONGS', items:state.worship       ||[]},
+      {key:'praise',   label:'PRAISE SONGS',  items:state.praise        ||[]},
+      {key:'offering', label:'OFFERING',       items:state.offering      ||[]},
     ];
 
     sections.forEach((sec,si)=>{
       if(si>0){doc.addPage();drawHeader();}
-      const C=COLS[sec.key]; const[r,g,b]=C.r;
+      const C=COLS[sec.key];
+      const[r,g,b]=C.r;
 
-      // Section strip
+      // Section heading strip
       doc.setFillColor(...C.bg);
       doc.roundedRect(ML,y,CW,11,2,2,'F');
       doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(r,g,b);
-      doc.text(`${sec.label}  —  ${currentMonth().toUpperCase()} ${new Date().getFullYear()}`,ML+5,y+7.8);
+      doc.text(sec.label+'  —  '+currentMonth().toUpperCase()+' '+new Date().getFullYear(),ML+5,y+7.8);
       y+=16;
 
       sec.items.forEach((item,idx)=>{
-        const isPrayer = sec.key==='prayer' || sec.key==='offering';
-
-        // Estimate card height
-        let estH = 18; // title row
-        if(item.yt) estH+=7;
-        if(isPrayer){
-          estH += (item.points||[]).filter(p=>p).length*5.5+8;
-          estH += (item.scriptures||[]).filter(s=>s).length*5.5+8;
-        } else {
-          if(item.lyrics) estH += doc.splitTextToSize(item.lyrics,CW-12).length*5+8;
-        }
-        estH = Math.max(estH,22);
-
-        needY(estH+6);
+        needY(28);
         const cy=y;
-
-        // Card box - draw after content; just init y tracking
-        let cx = cy+10;
+        let cx=cy+10;
 
         // Number circle
-        doc.setFillColor(r,g,b); doc.circle(ML+6,cy+7,4.5,'F');
+        doc.setFillColor(r,g,b);
+        doc.circle(ML+6,cy+7,4.5,'F');
         doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(255,255,255);
         doc.text(String(idx+1),ML+6,cy+9.2,{align:'center'});
 
         // Title
         doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(26,26,26);
-        doc.text(item.title||'(No title entered)',ML+14,cx);
-        // Time badge
+        doc.text(item.title||'(No title)',ML+14,cx);
+
+        // Duration badge
         if(item.time){
+          const timeW=doc.getTextWidth('⏱ '+item.time+' mins')+6;
           doc.setFillColor(...C.bg); doc.setDrawColor(...C.bd); doc.setLineWidth(0.3);
-          const timeW = doc.getTextWidth('⏱ '+item.time+' mins') + 6;
-          doc.roundedRect(PW-MR-timeW-2, cx-5, timeW+2, 6.5, 1.5, 1.5, 'FD');
+          doc.roundedRect(PW-MR-timeW-2,cx-5,timeW+2,6.5,1.5,1.5,'FD');
           doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(r,g,b);
-          doc.text('⏱ '+item.time+' mins', PW-MR-timeW+1, cx);
+          doc.text('⏱ '+item.time+' mins',PW-MR-timeW+1,cx);
         }
         cx+=8;
 
-        // YouTube
+        // YouTube link (prayer + worship + praise)
         if(item.yt){
+          needY(7);
           doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(200,0,0);
           doc.text('▶',ML+5,cx);
           doc.setFont('helvetica','normal'); doc.setTextColor(40,80,180);
-          const ytD = item.yt.length>64?item.yt.substring(0,61)+'…':item.yt;
+          const ytD=item.yt.length>64?item.yt.substring(0,61)+'…':item.yt;
           doc.textWithLink(ytD,ML+11,cx,{url:item.yt});
-          const lw=doc.getTextWidth(ytD);
           doc.setDrawColor(40,80,180); doc.setLineWidth(0.2);
-          doc.line(ML+11,cx+0.9,ML+11+lw,cx+0.9);
+          doc.line(ML+11,cx+0.9,ML+11+doc.getTextWidth(ytD),cx+0.9);
           cx+=8;
         }
 
-        // Instrumental link
-        if(isPrayer && item.instr_yt){
-          doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(r,g,b);
-          doc.text('🎵 Prayer Music:',ML+5,cx);
-          const labelW = doc.getTextWidth('🎸 Instrumental: ');
-          doc.setFont('helvetica','normal'); doc.setTextColor(40,80,180);
-          const instrD = item.instr_yt.length>58?item.instr_yt.substring(0,55)+'…':item.instr_yt;
-          doc.textWithLink(instrD, ML+5+labelW, cx, {url:item.instr_yt});
-          const ilw = doc.getTextWidth(instrD);
-          doc.setDrawColor(40,80,180); doc.setLineWidth(0.2);
-          doc.line(ML+5+labelW, cx+0.9, ML+5+labelW+ilw, cx+0.9);
-          cx+=8;
+        // Prayer Music links (prayer only)
+        if(sec.key==='prayer' && item.music){
+          const tracks=(item.music||[]).filter(m=>m.trim());
+          if(tracks.length){
+            doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(r,g,b);
+            doc.text('PRAYER MUSIC',ML+5,cx); cx+=5;
+            tracks.forEach((m,mi)=>{
+              needY(7);
+              doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(200,0,0);
+              doc.text((mi+1)+'.',ML+5,cx);
+              doc.setFont('helvetica','normal'); doc.setTextColor(40,80,180);
+              const mD=m.length>62?m.substring(0,59)+'…':m;
+              doc.textWithLink(mD,ML+11,cx,{url:m});
+              doc.setDrawColor(40,80,180); doc.setLineWidth(0.2);
+              doc.line(ML+11,cx+0.9,ML+11+doc.getTextWidth(mD),cx+0.9);
+              cx+=6.5;
+            });
+            cx+=2;
+          }
         }
 
-        if(isPrayer){
-          // Paired points & scriptures
-          const pairs = (item.pairs||[]).filter(p=>p.point||p.scripture);
-          if(pairs.length){
-            pairs.forEach((pair,pi)=>{
-              needY(14);
-              // pair number
-              doc.setFillColor(r,g,b);
-              doc.circle(ML+8, cx+1.5, 3, 'F');
-              doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(255,255,255);
-              doc.text(String(pi+1), ML+8, cx+3, {align:'center'});
+        // Prayer pairs (point + scripture)
+        if(sec.key==='prayer'){
+          const pairs=(item.pairs||[]).filter(p=>p.point||p.scripture);
+          pairs.forEach((pair,pi)=>{
+            needY(14);
+            doc.setFillColor(r,g,b);
+            doc.circle(ML+8,cx+1.5,3,'F');
+            doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(255,255,255);
+            doc.text(String(pi+1),ML+8,cx+3,{align:'center'});
+            cx+=2;
+            if(pair.point){
+              doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(r,g,b);
+              doc.text('POINT',ML+14,cx);
+              doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(40,30,10);
+              doc.splitTextToSize(pair.point,CW-22).forEach(l=>{doc.text(l,ML+14,cx+4);cx+=4.8;});
               cx+=2;
-              if(pair.point){
-                doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(r,g,b);
-                doc.text('POINT', ML+14, cx);
-                doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(40,30,10);
-                const ptLines = doc.splitTextToSize(pair.point, CW-22);
-                ptLines.forEach(l=>{ doc.text(l, ML+14, cx+4); cx+=4.8; });
-                cx+=2;
-              }
-              if(pair.scripture){
-                doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(74,96,144);
-                doc.text('SCRIPTURE', ML+14, cx);
-                doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(74,96,144);
-                const scLines = doc.splitTextToSize(pair.scripture, CW-22);
-                scLines.forEach(l=>{ doc.text(l, ML+14, cx+4); cx+=4.8; });
-                cx+=4;
-              }
+            }
+            if(pair.scripture){
+              doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(74,96,144);
+              doc.text('SCRIPTURE',ML+14,cx);
+              doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(74,96,144);
+              doc.splitTextToSize(pair.scripture,CW-22).forEach(l=>{doc.text(l,ML+14,cx+4);cx+=4.8;});
+              cx+=4;
+            }
+          });
+        }
+
+        // Offering: reference, minute, scriptures
+        if(sec.key==='offering'){
+          if(item.reference){
+            needY(7);
+            doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(r,g,b);
+            doc.text('REFERENCE:',ML+5,cx);
+            const rlw=doc.getTextWidth('REFERENCE: ');
+            doc.setFont('helvetica','normal'); doc.setTextColor(40,80,180);
+            const rD=item.reference.length>58?item.reference.substring(0,55)+'…':item.reference;
+            doc.textWithLink(rD,ML+5+rlw,cx,{url:item.reference});
+            doc.setDrawColor(40,80,180); doc.setLineWidth(0.2);
+            doc.line(ML+5+rlw,cx+0.9,ML+5+rlw+doc.getTextWidth(rD),cx+0.9);
+            cx+=7;
+          }
+          if(item.minute){
+            needY(7);
+            doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(r,g,b);
+            doc.text('MINUTE: ',ML+5,cx);
+            doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50);
+            doc.text(item.minute,ML+5+doc.getTextWidth('MINUTE: '),cx);
+            cx+=7;
+          }
+          const pairs=(item.pairs||[]).filter(p=>p.scripture);
+          if(pairs.length){
+            doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(r,g,b);
+            doc.text('SCRIPTURES',ML+5,cx); cx+=5;
+            pairs.forEach((pair,pi)=>{
+              needY(7);
+              doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(74,96,144);
+              doc.splitTextToSize((pi+1)+'. '+pair.scripture,CW-14).forEach(l=>{
+                doc.text(l,ML+7,cx); cx+=4.8;
+              });
+              cx+=2;
             });
           }
-        } else {
-
         }
 
         // Card border
         doc.setFillColor(...C.bg.map(v=>Math.min(255,v+15)));
         doc.setDrawColor(...C.bd); doc.setLineWidth(0.35);
         doc.roundedRect(ML,cy,CW,cx-cy+4,2.5,2.5,'SD');
-
         y=cx+8;
       });
     });
@@ -880,7 +905,7 @@ async function exportPDF() {
     const mon = currentMonth();
     doc.save(`GoYeAmsterdam_WorshipList_${mon}${new Date().getFullYear()}.pdf`);
 
-  } catch(err){ alert('Export failed: '+err.message); }
+  } catch(err){ alert('Export failed: '+err.message+'\n\nCheck browser console for details.'); console.error(err); }
 
   btn.disabled=false;
   btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/></svg> Export PDF`;
