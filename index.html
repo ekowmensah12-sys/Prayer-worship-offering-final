@@ -127,6 +127,8 @@
     .offering-panel .pair-inner-label.point-lbl{color:#4a6e3a;}
     .prayer-panel   .pair-inner-label.script-lbl{color:#4a6090;}
     .offering-panel .pair-inner-label.script-lbl{color:#4a6090;}
+    .offering-card .pair-row:first-child{display:none;}
+    .offering-card .pair-group{padding-top:8px;}
     .sub-item{display:flex;align-items:center;gap:8px;}
     .sub-item input{flex:1;}
     .sub-del-btn{width:22px;height:22px;border-radius:50%;border:1px solid #DDD;background:#F5F0E8;color:#bbb;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .18s;}
@@ -429,8 +431,8 @@ function buildOfferingCard(item, idx) {
     </div>
     <div class="sub-section">
       <div class="sub-section-head">
-        <span class="sub-section-label">📌 Points &amp; Scriptures</span>
-        <button class="sub-add-btn" onclick="addPair(this)">+ Add Pair</button>
+        <span class="sub-section-label">📖 Scriptures</span>
+        <button class="sub-add-btn" onclick="addPair(this)">+ Add Scripture</button>
       </div>
       <div class="pairs-list">${pairsHTML}</div>
     </div>
