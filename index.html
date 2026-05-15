@@ -1,961 +1,761 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Go Ye Amsterdam – Worship List</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet"/>
-  <script>
-// Load jsPDF with multiple fallbacks
-(function(){
-  var cdns = [
-    'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-    'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'
-  ];
-  var idx = 0;
-  function tryLoad(){
-    if(idx >= cdns.length){ console.error('All jsPDF CDNs failed'); return; }
-    var s = document.createElement('script');
-    s.src = cdns[idx++];
-    s.onerror = tryLoad;
-    document.head.appendChild(s);
-  }
-  tryLoad();
-})();
-</script>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0;}
-    html,body{background:#F0EDE6!important;color:#1a1a1a;font-family:'Source Sans 3',sans-serif;min-height:100vh;}
-
-    /* ── HEADER ── */
-    header{background:linear-gradient(135deg,#6B4F0A 0%,#9A7010 25%,#C49A14 50%,#9A7010 75%,#6B4F0A 100%);padding:28px 24px 22px;text-align:center;position:relative;}
-    header::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(-55deg,rgba(255,255,255,0.04) 0px,rgba(255,255,255,0.04) 1px,transparent 1px,transparent 14px);}
-    header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#3D2D04,#C49A14,#F0C840,#C49A14,#3D2D04);}
-    .church-name{font-family:'Cormorant Garamond',serif;font-size:clamp(24px,5vw,44px);font-weight:700;color:#FFF8E7;letter-spacing:0.07em;text-shadow:0 2px 10px rgba(0,0,0,0.45);position:relative;}
-    .church-sub{font-size:11px;letter-spacing:0.32em;text-transform:uppercase;color:rgba(255,240,190,0.8);margin-top:4px;position:relative;}
-
-    /* Month dropdown */
-    .month-wrap{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:5px 16px 5px 20px;background:rgba(0,0,0,0.25);border:1.5px solid rgba(255,220,100,0.5);border-radius:30px;position:relative;cursor:pointer;}
-    .month-wrap select{appearance:none;-webkit-appearance:none;background:transparent;border:none;outline:none;font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:600;color:#FFF0C0;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;padding-right:4px;}
-    .month-wrap select option{background:#8a6010;color:#fff;font-size:14px;letter-spacing:0;}
-    .month-arrow{color:#FFF0C0;font-size:11px;pointer-events:none;}
-
-    /* ── TABS ── */
-    .tabs-bar{background:#E8E4DC;border-bottom:2px solid #CCC6BA;display:flex;justify-content:center;flex-wrap:wrap;}
-    .tab-btn{padding:13px 32px;font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;letter-spacing:0.04em;border:none;background:transparent;color:#999;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:color .2s,border-color .2s;}
-    .tab-btn:hover{color:#444;}
-    .tab-btn.act-prayer   {color:#7a4f00;border-bottom-color:#7a4f00;}
-    .tab-btn.act-offering {color:#4a6e3a;border-bottom-color:#4a6e3a;}
-    .tab-btn.act-worship{color:#1a5c38;border-bottom-color:#1a5c38;}
-    .tab-btn.act-praise {color:#8b2020;border-bottom-color:#8b2020;}
-
-    /* ── LAYOUT ── */
-    .page{max-width:820px;margin:0 auto;padding:26px 20px 90px;}
-    .tab-panel{display:none;}
-    .tab-panel.active{display:block;}
-
-    /* ── SECTION HEADER ── */
-    .section-head{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:12px;border-bottom:1.5px solid #CCC6BA;}
-    .section-head h2{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:700;}
-    .prayer-panel   .section-head h2{color:#7a4f00;}
-    .offering-panel .section-head h2{color:#4a6e3a;}
-    .worship-panel .section-head h2{color:#1a5c38;}
-    .praise-panel  .section-head h2{color:#8b2020;}
-    .section-icon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
-    .prayer-panel   .section-icon{background:#f5e6c8;border:1px solid #d4aa70;}
-    .offering-panel .section-icon{background:#d4eacc;border:1px solid #8aba78;}
-    .worship-panel .section-icon{background:#c8e4d0;border:1px solid #8ec8a8;}
-    .praise-panel  .section-icon{background:#e8cece;border:1px solid #c09898;}
-
-    /* ── ADD BUTTON ── */
-    .add-btn{margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;font-family:'Source Sans 3',sans-serif;font-size:11.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;cursor:pointer;transition:filter .18s;}
-    .prayer-panel   .add-btn{background:#f5e6c8;color:#7a4f00;border:1px solid #d4aa70;}
-    .offering-panel .add-btn{background:#d4eacc;color:#4a6e3a;border:1px solid #8aba78;}
-    .worship-panel .add-btn{background:#c8e4d0;color:#1a5c38;border:1px solid #8ec8a8;}
-    .praise-panel  .add-btn{background:#e8cece;color:#8b2020;border:1px solid #c09898;}
-    .add-btn:hover{filter:brightness(0.92);}
-
-    /* ── CARDS ── */
-    .items-list{display:flex;flex-direction:column;gap:14px;}
-    .card{background:#FAFAF7;border:1px solid #C8C2B4;border-radius:10px;padding:16px 16px 14px;box-shadow:0 2px 8px rgba(0,0,0,0.06);position:relative;}
-
-    /* ── DELETE BTN ── */
-    .del-btn{position:absolute;top:11px;right:11px;width:24px;height:24px;border-radius:50%;border:1px solid #DDD;background:#F5F0E8;color:#bbb;font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s;}
-    .del-btn:hover{background:#ffe0e0;border-color:#f0aaaa;color:#cc3333;}
-
-    /* ── ITEM NUMBER ── */
-    .item-num{width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;max-width:28px!important;max-height:28px!important;border-radius:50%!important;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:14px;font-weight:700;flex-shrink:0;flex-grow:0;line-height:1;overflow:hidden;}
-    .prayer-panel   .item-num{background:#f5e6c8;color:#7a4f00;border:1.5px solid #d4aa70;}
-    .offering-panel .item-num{background:#d4eacc;color:#4a6e3a;border:1.5px solid #8aba78;}
-    .worship-panel .item-num{background:#c8e4d0;color:#1a5c38;border:1.5px solid #8ec8a8;}
-    .praise-panel  .item-num{background:#e8cece;color:#8b2020;border:1.5px solid #c09898;}
-
-    /* ── FIELD LABEL ── */
-    .field-label{font-size:10px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#999;margin-bottom:4px;}
-
-    /* ── INPUTS ── */
-    input[type="text"],input[type="url"]{width:100%;padding:8px 11px;border:1.5px solid #C0B8A8;border-radius:7px;font-family:'Source Sans 3',sans-serif;font-size:14px;color:#1a1a1a;background:#F5F2EC;outline:none;transition:border-color .18s,background .18s;}
-    input:focus{background:#fff!important;}
-    .prayer-panel   input:focus{border-color:#7a4f00!important;}
-    .offering-panel input:focus{border-color:#4a6e3a!important;}
-    .worship-panel input:focus{border-color:#1a5c38!important;}
-    .praise-panel  input:focus{border-color:#8b2020!important;}
-    input::placeholder{color:#B0A890;}
-
-    /* ── PRAYER CARD ── */
-    .prayer-card .p-card-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;padding-right:34px;}
-    .prayer-card .p-card-top>div:last-child{flex:1;}
-
-    /* YouTube row */
-    .yt-wrap{position:relative;}
-    .yt-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:17px;height:17px;pointer-events:none;}
-    .yt-wrap input{padding-left:32px;}
-
-    /* ── POINTS & SCRIPTURES ── */
-    .sub-section{margin-top:14px;}
-    .sub-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-    .sub-section-label{font-size:10.5px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;}
-    .prayer-panel .sub-section-label{color:#7a4f00;}
-    .worship-panel .sub-section-label{color:#1a5c38;}
-    .praise-panel .sub-section-label{color:#8b2020;}
-
-    .sub-add-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:16px;font-size:10.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;cursor:pointer;border:none;transition:filter .18s;}
-    .prayer-panel   .sub-add-btn{background:#f5e6c8;color:#7a4f00;border:1px solid #d4aa70;}
-    .offering-panel .sub-add-btn{background:#d4eacc;color:#4a6e3a;border:1px solid #8aba78;}
-    .worship-panel .sub-add-btn{background:#c8e4d0;color:#1a5c38;border:1px solid #8ec8a8;}
-    .praise-panel  .sub-add-btn{background:#e8cece;color:#8b2020;border:1px solid #c09898;}
-    .sub-add-btn:hover{filter:brightness(0.9);}
-
-    .sub-items{display:flex;flex-direction:column;gap:6px;}
-    /* Paired point+scripture */
-    .pairs-list{display:flex;flex-direction:column;gap:10px;}
-    .music-list{display:flex;flex-direction:column;gap:6px;}
-    .offering-music-list{display:flex;flex-direction:column;gap:6px;}
-    .music-item{display:flex;align-items:center;gap:8px;position:relative;}
-    .music-item input{flex:1;}
-    .music-item .yt-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:17px;height:17px;pointer-events:none;}
-    .pair-group{background:#F5F0E6;border:1px solid #DDD5C0;border-radius:8px;padding:10px 12px;position:relative;}
-    .pair-del-btn{position:absolute;top:8px;right:8px;width:20px;height:20px;border-radius:50%;border:1px solid #DDD;background:#F5F0E8;color:#bbb;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .18s;}
-    .pair-del-btn:hover{background:#ffe0e0;border-color:#f0aaaa;color:#cc3333;}
-    .pair-row{margin-bottom:8px;}
-    .pair-row:last-child{margin-bottom:0;}
-    .pair-inner-label{font-size:9.5px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:3px;}
-    .prayer-panel   .pair-inner-label.point-lbl{color:#7a4f00;}
-    .offering-panel .pair-inner-label.point-lbl{color:#4a6e3a;}
-    .prayer-panel   .pair-inner-label.script-lbl{color:#4a6090;}
-    .offering-panel .pair-inner-label.script-lbl{color:#4a6090;}
-    .sub-item{display:flex;align-items:center;gap:8px;}
-    .sub-item input{flex:1;}
-    .sub-del-btn{width:22px;height:22px;border-radius:50%;border:1px solid #DDD;background:#F5F0E8;color:#bbb;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .18s;}
-    .sub-del-btn:hover{background:#ffe0e0;border-color:#f0aaaa;color:#cc3333;}
-
-
-    /* ── TIME FIELD ── */
-    .time-row{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:10px;border-top:1px solid #E8E2D8;}
-    .time-row .field-label{margin-bottom:0;white-space:nowrap;}
-    .time-input{width:130px!important;padding:7px 10px!important;font-size:13.5px!important;font-family:'Source Sans 3',sans-serif;}
-    .time-hint{font-size:11px;color:#B0A890;margin-left:2px;}
-    /* ── SONG CARD ── */
-    .song-card .row-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-right:34px;}
-    .song-card .row-top>div:last-child{flex:1;}
-    .song-card .row-bottom{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;}
-    .instr-box{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;}
-    .instr-box .field-label{text-align:center;}
-    .toggle-wrap{display:flex;align-items:center;gap:7px;}
-    .toggle-track{width:42px;height:24px;border-radius:12px;background:#C0B8A8;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;}
-    .worship-panel .toggle-track.on{background:#1a5c38;}
-    .praise-panel  .toggle-track.on{background:#8b2020;}
-    .toggle-thumb{width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,0.25);position:absolute;top:3px;left:3px;transition:left .2s;}
-    .toggle-track.on .toggle-thumb{left:21px;}
-    .toggle-label{font-size:11px;font-weight:700;color:#999;min-width:22px;}
-    .worship-panel .toggle-track.on~.toggle-label{color:#1a5c38;}
-    .praise-panel  .toggle-track.on~.toggle-label{color:#8b2020;}
-    .lyrics-toggle-row{margin-top:10px;}
-    .lyrics-toggle-btn{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:#E8E4DC;border:1px solid #C8C2B4;border-radius:20px;padding:4px 13px;cursor:pointer;color:#999;transition:all .18s;}
-    .lyrics-toggle-btn:hover{background:#DDD8CE;color:#444;}
-    .worship-panel .lyrics-toggle-btn.open{background:#c8e4d0;color:#1a5c38;border-color:#8ec8a8;}
-    .praise-panel  .lyrics-toggle-btn.open{background:#e8cece;color:#8b2020;border-color:#c09898;}
-    .lyrics-area{display:none;margin-top:10px;}
-    .lyrics-area.open{display:block;}
-    .lyrics-area textarea{width:100%;min-height:110px;padding:8px 11px;border:1.5px solid #C0B8A8;border-radius:7px;font-family:'Source Sans 3',sans-serif;font-size:13.5px;line-height:1.75;color:#2a2a2a;background:#F5F2EC;resize:vertical;outline:none;transition:border-color .18s;}
-    .worship-panel .lyrics-area textarea:focus{border-color:#1a5c38;}
-    .praise-panel  .lyrics-area textarea:focus{border-color:#8b2020;}
-    .lyrics-area textarea::placeholder{color:#B0A890;}
-
-    /* ── EXPORT BAR ── */
-    .export-bar{position:fixed;bottom:0;left:0;right:0;background:#E8E4DC;border-top:2px solid #CCC6BA;padding:12px 24px;display:flex;justify-content:flex-end;align-items:center;gap:12px;z-index:100;box-shadow:0 -3px 14px rgba(0,0,0,0.10);}
-    .export-hint{font-size:12px;color:#888;margin-right:auto;font-weight:600;}
-    .save-indicator{font-size:11px;color:#1a5c38;font-weight:700;letter-spacing:0.08em;opacity:0;transition:opacity .4s;}
-    .save-indicator.show{opacity:1;}
-    .btn-export{display:inline-flex;align-items:center;gap:7px;padding:9px 22px;background:linear-gradient(135deg,#6B4F0A,#9A7010,#C49A14);color:#FFF8E7;font-family:'Source Sans 3',sans-serif;font-size:12.5px;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;border:none;border-radius:8px;cursor:pointer;box-shadow:0 2px 10px rgba(80,55,0,0.3);transition:transform .15s,box-shadow .15s;}
-    .btn-export:hover{transform:translateY(-1px);box-shadow:0 4px 18px rgba(80,55,0,0.42);}
-    .btn-export:disabled{opacity:0.6;cursor:not-allowed;transform:none;}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GY Amsterdam — State of the Flock</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#f0f4f0;color:#1a2e1a;min-height:100vh}
+header{background:#2d6a2d;color:#fff;padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:80px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.header-left{display:flex;align-items:center;gap:14px}
+.sheep-logo{font-size:42px}
+.header-title h1{font-size:32px;font-weight:700}
+.header-title p{font-size:16px;opacity:.75}
+.key-box{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px 14px;font-size:11px;display:flex;gap:10px;align-items:center}
+.key-box strong{font-size:10px;opacity:.7;text-transform:uppercase;letter-spacing:.5px;margin-right:2px}
+.kpill{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600}
+.kl1{background:#fde8d8;color:#7a3010}.kl2{background:#fff3cd;color:#7a5c00}
+.kl3{background:#d4edda;color:#1a5c2e}.kl4{background:#cce5ff;color:#1a3a5c}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.d1{background:#e07030}.d2{background:#d4a017}.d3{background:#28a745}.d4{background:#0d6efd}
+.main{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 80px)}
+.sidebar{background:#fff;border-right:2px solid #c8ddc8;padding:20px;overflow-y:auto;max-height:calc(100vh - 80px)}
+.slabel{display:block;font-size:16px;font-weight:800;color:#2d6a2d;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.ssec{margin-bottom:16px}
+select,input[type=text],input[type=number],input[type=date],input[type=url],input[type=month]{width:100%;padding:5px 8px;border:1px solid #c8ddc8;border-radius:6px;font-size:13px;font-family:inherit;background:#fafefa;color:#1a2e1a;outline:none}
+select:focus,input:focus{border-color:#2d6a2d;box-shadow:0 0 0 3px rgba(45,106,45,.1)}
+.btn{width:100%;padding:10px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s;margin-top:6px}
+.btn-green{background:#2d6a2d;color:#fff}.btn-green:hover{background:#245524}
+.btn-red{background:#fff;color:#c0392b;border:1px solid #e8c0bc}.btn-red:hover{background:#fdf0f0}
+.btn-outline{background:#fff;color:#2d6a2d;border:1px solid #c8ddc8}.btn-outline:hover{background:#f0f7f0}
+.btn-blue{background:#1a3a8a;color:#fff}.btn-blue:hover{background:#142e6e}
+.mlist{max-height:200px;overflow-y:auto;border:1px solid #d4e6d4;border-radius:7px}
+.mitem{padding:12px 14px;font-size:15px;cursor:pointer;border-bottom:1px solid #eef5ee;display:flex;align-items:center;justify-content:space-between}
+.mitem:last-child{border-bottom:none}
+.mitem:hover{background:#f0f7f0}
+.mitem.active{background:#e8f5e8;font-weight:600}
+.mnum{font-size:13px;color:#5a8a5a;font-weight:600}
+.abadge{font-size:10px;padding:2px 6px;border-radius:10px;font-weight:600}
+.az{background:#e8f5e8;color:#2d6a2d}.azo{background:#e8f0ff;color:#2d4a8a}
+.content{padding:22px;overflow-y:auto;max-height:calc(100vh - 80px)}
+.tabs{display:flex;gap:6px;margin-bottom:20px;background:#fff;border-radius:12px;padding:5px;border:1px solid #d4e6d4;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.tab{padding:11px 24px;border-radius:9px;font-size:15px;font-weight:600;cursor:pointer;border:none;background:transparent;color:#4a7a4a;font-family:inherit}
+.tab.active{background:#2d6a2d;color:#fff}
+.card{background:#fff;border-radius:12px;border:1px solid #d4e6d4;padding:20px;margin-bottom:14px}
+.ctitle{font-size:17px;font-weight:700;color:#2d6a2d;margin-bottom:16px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:11px;font-weight:700;color:#4a7a4a;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.full{grid-column:1/-1}
+.avatar-area{display:flex;align-items:center;gap:14px;margin-bottom:14px;padding:14px;background:#f0f7f0;border-radius:12px;border:1px dashed #9ec49e}
+.avcircle{width:110px;height:110px;border-radius:50%;background:#2d6a2d;color:#fff;display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:700;flex-shrink:0;overflow:hidden}
+.avcircle img{width:100%;height:100%;object-fit:cover}
+.avup label{display:inline-block;padding:5px 11px;background:#fff;border:1px solid #c8ddc8;border-radius:6px;font-size:12px;font-weight:500;color:#2d6a2d;cursor:pointer}
+.avup input{display:none}
+.avup p{font-size:11px;color:#7a9a7a;margin-top:3px}
+/* REVIEW */
+.review-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rgroup{background:#f8fdf8;border:1px solid #d4e6d4;border-radius:10px;padding:14px 16px}
+.rgroup-title{font-size:13px;font-weight:800;color:#2d6a2d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #c8ddc8}
+.ritem{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #eef5ee;font-size:14px}
+.ritem:last-child{border-bottom:none}
+.ritem input[type=checkbox]{width:22px;height:22px;accent-color:#2d6a2d;flex-shrink:0;cursor:pointer}
+.ritem label{flex:1;cursor:pointer;line-height:1.3;color:#1a2e1a;font-size:14px}
+.ritem .pts{font-size:13px;font-weight:700;color:#4a7a4a;background:#e8f5e8;padding:3px 9px;border-radius:10px;flex-shrink:0}
+.score-bar{background:#fff;border:1px solid #d4e6d4;border-radius:10px;padding:18px 20px;margin-bottom:14px;display:flex;align-items:center;gap:20px}
+.score-num{font-size:44px;font-weight:700;color:#2d6a2d;min-width:70px;text-align:center}
+.score-label{font-size:14px;color:#7a9a7a;font-weight:600;text-align:center}
+.score-bar-outer{flex:1;height:20px;background:#eef5ee;border-radius:10px;overflow:hidden}
+.score-bar-inner{height:100%;border-radius:6px;transition:width .4s,background .4s}
+.level-badge{padding:6px 14px;border-radius:20px;font-size:16px;font-weight:700;margin-left:10px}
+/* PIPELINE */
+.pipeline{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+.pcol{border-radius:10px;border:1px solid #d4e6d4;overflow:hidden}
+.phead{padding:14px 16px;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+.ph1{background:#fde8d8;color:#7a3010;border-bottom:2px solid #e07030}
+.ph2{background:#fff3cd;color:#7a5c00;border-bottom:2px solid #d4a017}
+.ph3{background:#d4edda;color:#1a5c2e;border-bottom:2px solid #28a745}
+.ph4{background:#cce5ff;color:#1a3a5c;border-bottom:2px solid #0d6efd}
+.pcnt{background:rgba(0,0,0,.12);border-radius:20px;padding:1px 7px;font-size:11px}
+.pbody{padding:9px;background:#fff;min-height:80px;max-height:320px;overflow-y:auto}
+.pmember{padding:9px 11px;border-radius:7px;font-size:14px;margin-bottom:6px;border:1px solid #eef5ee;background:#fafefa;cursor:pointer}
+.pmember:hover{border-color:#9ec49e;background:#f0f7f0}
+.pm-name{font-weight:700;font-size:15px}
+.pm-meta{font-size:12px;color:#7a9a7a;margin-top:3px}
+/* STATS */
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:16px}
+.scard{background:#fff;border-radius:10px;border:1px solid #d4e6d4;padding:13px 15px;text-align:center}
+.snum{font-size:32px;font-weight:700;color:#2d6a2d}
+.slbl{font-size:14px;color:#7a9a7a;margin-top:3px;font-weight:500}
+.empty{text-align:center;padding:24px;color:#9aaa9a;font-size:12px}
+/* PDF REPORT */
+.report-member{background:#fff;border:1px solid #d4e6d4;border-radius:14px;padding:18px 20px;margin-bottom:14px}
+.rm-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.rm-name{font-size:18px;font-weight:700}
+.rm-checks{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.rm-check{font-size:13px;padding:3px 10px;border-radius:10px;font-weight:500}
+.chk-yes{background:#e8f5e8;color:#1a5c2e}
+.chk-no{background:#fde8d8;color:#7a3010}
+.toast{position:fixed;bottom:20px;right:20px;background:#2d6a2d;color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:500;transform:translateY(80px);opacity:0;transition:all .3s;z-index:999}
+.toast.show{transform:translateY(0);opacity:1}
+@media print{
+  header,.sidebar,.tabs,.btn,.ssec,#tab-record,#tab-review,#tab-pipeline{display:none!important}
+  #tab-report{display:block!important}
+  .main{display:block!important}
+  .content{max-height:none!important;overflow:visible!important;padding:20px!important}
+  body{background:#fff!important;font-size:12px}
+  .card{border:1px solid #ccc!important;margin-bottom:12px!important;padding:14px!important;break-inside:avoid}
+  .report-member{border:1px solid #ccc!important;border-radius:6px!important;padding:12px!important;margin-bottom:10px!important;break-inside:avoid;page-break-inside:avoid}
+  .sgrid,.scard{display:block!important}
+  .rm-checks{display:flex!important;flex-wrap:wrap!important;gap:4px!important}
+  .rm-check{font-size:10px!important;padding:2px 6px!important}
+  h1,h2{color:#2d6a2d!important}
+  .kpill,.level-badge{border:1px solid #ccc!important}
+  @page{margin:15mm;size:A4 portrait}
+  .report-summary-grid{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important;margin-bottom:12px!important}
+}
+</style>
 </head>
 <body>
-
 <header>
-  <div class="church-name">Go Ye Amsterdam</div>
-  <div class="church-sub">Worship Department &nbsp;·&nbsp; Song Database</div>
-  <div class="month-wrap">
-    <select id="monthSelect" onchange="changeMonth()">
-      <option>January</option><option>February</option><option>March</option>
-      <option>April</option><option selected>May</option><option>June</option>
-      <option>July</option><option>August</option><option>September</option>
-      <option>October</option><option>November</option><option>December</option>
-    </select>
-    <span class="month-arrow">▾</span>
+  <div class="header-left">
+    <div class="sheep-logo">🐑</div>
+    <div class="header-title">
+      <h1>GY Amsterdam — State of the Flock</h1>
+      <p>Member Database &amp; Pastoral Overview</p>
+    </div>
   </div>
-</header>
+  </header>
 
-<div class="tabs-bar">
-  <button class="tab-btn act-prayer"  id="btn-prayer"  onclick="switchTab('prayer')">🙏 Prayer</button>
-  <button class="tab-btn"             id="btn-worship" onclick="switchTab('worship')">🕊 Worship</button>
-  <button class="tab-btn"             id="btn-praise"  onclick="switchTab('praise')">🎺 Praise</button>
-  <button class="tab-btn"             id="btn-offering" onclick="switchTab('offering')">🙌 Offering</button>
+<div class="main">
+<div class="sidebar">
+  <div class="ssec">
+    <label class="slabel">Filter by Area</label>
+    <select id="areaFilter" onchange="renderAll()" style="font-size:15px;padding:10px 12px;font-weight:600;border:2px solid #2d6a2d;border-radius:8px;background:#f0f7f0;color:#1a2e1a"></select>
+  </div>
+  <div class="ssec">
+    <label class="slabel">Members</label>
+    <div class="mlist" id="memberList"></div>
+    <button class="btn btn-outline" onclick="newMember()">+ Add New Member</button>
+  </div>
+  <div class="ssec">
+    <button class="btn btn-green" onclick="saveMember()">💾 Save Member</button>
+    <button class="btn btn-red" onclick="deleteMember()">🗑 Delete Member</button>
+  </div>
 </div>
 
-<div class="page">
+<div class="content">
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('record',this)">👤 Member Record</button>
+    <button class="tab" onclick="switchTab('review',this)">✅ Monthly Review</button>
+    <button class="tab" onclick="switchTab('pipeline',this)">📊 Pipeline</button>
+    <button class="tab" onclick="switchTab('report',this)">📄 Monthly Report</button>
+  </div>
 
-  <!-- PRAYER -->
-  <div id="panel-prayer" class="tab-panel prayer-panel active">
-    <div class="section-head">
-      <div class="section-icon">🙏</div>
-      <h2 id="prayer-heading">Prayer</h2>
-      <button class="add-btn" onclick="addPrayerCard()">+ Add Section</button>
+  <!-- MEMBER RECORD -->
+    <div id="tab-record"><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+    <div class="card">
+      <div class="ctitle">🐑 Member Profile</div>
+
+      <!-- AVATAR ROW -->
+      <div class="avatar-area">
+        <div class="avcircle" id="avatarCircle">?</div>
+        <div style="flex:1">
+          <div style="display:grid;grid-template-columns:1fr;gap:5px;margin-bottom:6px">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#4a7a4a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">First Name</div>
+              <input type="text" id="firstName" oninput="updateAvatar()" style="width:100%;padding:5px 10px;border:1px solid #c8ddc8;border-radius:6px;font-size:18px;font-weight:700;font-family:inherit;background:#fff;outline:none;color:#1a2e1a">
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#4a7a4a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Surname</div>
+              <input type="text" id="surname" oninput="updateAvatar()" style="width:100%;padding:5px 10px;border:1px solid #c8ddc8;border-radius:6px;font-size:18px;font-weight:700;font-family:inherit;background:#fff;outline:none;color:#1a2e1a">
+            </div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:#4a7a4a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Social Media</div>
+          <input type="url" id="socialMedia" placeholder="https://instagram.com/username" style="width:100%;padding:5px 8px;border:1px solid #c8ddc8;border-radius:6px;font-size:13px;font-family:inherit;background:#fff;outline:none">
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:20px">
+          <div style="font-size:11px;font-weight:700;color:#4a7a4a;text-transform:uppercase;letter-spacing:.5px">Member No.</div>
+          <div style="font-size:28px;font-weight:700;color:#2d6a2d;line-height:1.2" id="memberNumDisplay">---</div>
+        </div>
+      </div>
+
+      <!-- FORM -->
+      <div class="fgrid">
+        <div class="fg"><label>Age</label><input type="number" id="age" min="1" max="120"></div>
+        <div class="fg"><label>Date of Birth</label><input type="date" id="dob" onchange="calcAge()"></div>
+        <div class="fg full"><label>Address</label><input type="text" id="address"></div>
+        <div class="fg"><label>Area</label><select id="area"></select></div>
+        <div class="fg"><label>Commitment Level</label>
+          <div id="commitmentDisplay" style="padding:8px 10px;border:1px solid #c8ddc8;border-radius:7px;font-size:14px;background:#f0f7f0;color:#2d6a2d;font-weight:700;min-height:36px;display:flex;align-items:center">—</div>
+          <input type="hidden" id="commitment" value="1">
+        </div>
+      </div>
     </div>
-    <div class="items-list" id="prayer-list"></div>
-    <div style="margin-top:14px;text-align:center;">
-      <button class="add-btn" onclick="addPrayerCard()" style="margin:0 auto;">+ Add Another Section</button>
+    <div class="card" id="memberSummaryPanel" style="display:none">
+      <div class="ctitle">📊 Member Summary</div>
+      <div id="memberSummaryContent"></div>
+    </div>
+    <div id="memberSummaryEmpty" class="card" style="display:flex;align-items:center;justify-content:center;min-height:300px;color:#9aaa9a;font-size:14px;flex-direction:column;gap:8px">
+      <div style="font-size:40px">🐑</div>
+      <div>Select a member to see their summary</div>
+    </div>
     </div>
   </div>
 
-  <!-- WORSHIP -->
-  <div id="panel-worship" class="tab-panel worship-panel">
-    <div class="section-head">
-      <div class="section-icon">🕊</div>
-      <h2 id="worship-heading">Worship Songs</h2>
-      <button class="add-btn" onclick="addSongCard('worship')">+ Add Song</button>
-    </div>
-    <div class="items-list" id="worship-list"></div>
-    <div style="margin-top:14px;text-align:center;">
-      <button class="add-btn" onclick="addSongCard('worship')" style="margin:0 auto;">+ Add Another Song</button>
+  <!-- MONTHLY REVIEW -->
+  <div id="tab-review" style="display:none">
+    <div id="reviewNoMember" class="card" style="text-align:center;padding:30px;color:#7a9a7a">Select a member from the sidebar to begin their monthly review</div>
+    <div id="reviewContent" style="display:none"><div style="position:sticky;top:0;z-index:10;background:#f0f4f0;padding-bottom:8px">
+      <div class="score-bar" id="scoreBar">
+        <div>
+          <div class="score-num" id="scoreNum">0</div>
+          <div class="score-label">/ 280 pts</div>
+        </div>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;margin-bottom:6px">
+            <span style="font-size:26px;font-weight:700;color:#1a2e1a" id="scoreName">—</span>
+            <span class="level-badge kl1" id="scoreBadge">L1 Fairweather</span>
+          </div>
+          <div class="score-bar-outer"><div class="score-bar-inner" id="scoreBarInner" style="width:0%;background:#e07030"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;color:#9aaa9a;margin-top:6px">
+            <span>0</span><span>49</span><span>99</span><span>174</span><span>280</span>
+          </div>
+        </div>
+      </div></div>
+
+      <div class="review-grid">
+        <div class="rgroup">
+          <div class="rgroup-title">☀️ Sunday Attendance</div>
+          <div class="ritem"><input type="checkbox" id="c_sun3m" onchange="calcScore()"><label for="c_sun3m">Attended past 3 months</label><span class="pts">1pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_sun1m" onchange="calcScore()"><label for="c_sun1m">Attended past month</label><span class="pts">1pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_sun1w" onchange="calcScore()"><label for="c_sun1w">Attended past week</label><span class="pts">3pt</span></div>
+        </div>
+
+        <div class="rgroup">
+          <div class="rgroup-title">🏠 Bacenta Attendance</div>
+          <div class="ritem"><input type="checkbox" id="c_bac3m" onchange="calcScore()"><label for="c_bac3m">Attended past 3 months</label><span class="pts">1pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_bac1m" onchange="calcScore()"><label for="c_bac1m">Attended past month</label><span class="pts">1pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_bac1w" onchange="calcScore()"><label for="c_bac1w">Attended past week</label><span class="pts">3pt</span></div>
+        </div>
+
+        <div class="rgroup">
+          <div class="rgroup-title">🤝 Friendships</div>
+          <div class="ritem"><input type="checkbox" id="c_fr1" onchange="calcScore()"><label for="c_fr1">Has one member friend</label><span class="pts">10pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_fr2" onchange="calcScore()"><label for="c_fr2">Has one leader friend</label><span class="pts">10pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_fr3" onchange="calcScore()"><label for="c_fr3">Developed a new friend in church this month</label><span class="pts">10pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_fr4" onchange="calcScore()"><label for="c_fr4">Active in a ministry team</label><span class="pts">20pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_fr5" onchange="calcScore()"><label for="c_fr5">Active friendship with a Bishop</label><span class="pts">50pt</span></div>
+        </div>
+
+        <div class="rgroup">
+          <div class="rgroup-title">💬 Counselling &amp; Meetings</div>
+          <div class="ritem"><input type="checkbox" id="c_co1" onchange="calcScore()"><label for="c_co1">Had 1 IC with Ekow in past 3 months</label><span class="pts">10pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_co2" onchange="calcScore()"><label for="c_co2">Attended a S.A.T or Leaders meeting this month</label><span class="pts">10pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_co3" onchange="calcScore()"><label for="c_co3">Received correction &amp; responded well this month</label><span class="pts">20pt</span></div>
+        </div>
+
+        <div class="rgroup">
+          <div class="rgroup-title">🏕️ Camps &amp; Conferences</div>
+          <div class="ritem"><input type="checkbox" id="c_ca1" onchange="calcScore()"><label for="c_ca1">Attended Ams or NL camp in past 3 months</label><span class="pts">20pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_ca2" onchange="calcScore()"><label for="c_ca2">Attending an International Camp/Conference</label><span class="pts">30pt</span></div>
+        </div>
+
+        <div class="rgroup">
+          <div class="rgroup-title">🙏 Spiritual State</div>
+          <div class="ritem"><input type="checkbox" id="c_sp1" onchange="calcScore()"><label for="c_sp1">Free from a worldly lifestyle</label><span class="pts">20pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_sp2" onchange="calcScore()"><label for="c_sp2">Invested in committed prayer &amp; bible lifestyle</label><span class="pts">20pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_sp3" onchange="calcScore()"><label for="c_sp3">Listens to FL/BDHM preaching messages weekly</label><span class="pts">20pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_sp4" onchange="calcScore()"><label for="c_sp4">Avid interest in Christian books this month</label><span class="pts">20pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_sp5" onchange="calcScore()"><label for="c_sp5">Active tithe payer</label><span class="pts">50pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_cd1" onchange="calcScore()"><label for="c_cd1">Finished New Believers School</label><span class="pts">10pt</span></div>
+          <div class="ritem"><input type="checkbox" id="c_cd2" onchange="calcScore()"><label for="c_cd2">Governor</label><span class="pts">30pt</span></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <div class="fg" style="flex:1">
+          <label class="slabel">Review Month</label>
+          <input type="month" id="reviewMonth" style="width:100%;padding:7px 10px;border:1px solid #c8ddc8;border-radius:7px;font-size:13px;font-family:inherit;background:#fafefa">
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:8px">
+          <button class="btn btn-green" style="width:auto;padding:8px 18px" onclick="saveReview()">💾 Save Review</button>
+          <button class="btn btn-blue" style="width:auto;padding:8px 18px" onclick="switchTab('report',document.querySelectorAll('.tab')[3])">📄 View Report</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- PRAISE -->
-  <div id="panel-praise" class="tab-panel praise-panel">
-    <div class="section-head">
-      <div class="section-icon">🎺</div>
-      <h2 id="praise-heading">Praise Songs</h2>
-      <button class="add-btn" onclick="addSongCard('praise')">+ Add Song</button>
+  <!-- PIPELINE -->
+  <div id="tab-pipeline" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+      <div style="display:flex;gap:4px;background:#fff;border-radius:10px;padding:4px;border:1px solid #d4e6d4" id="pipelineTabs"></div>
+      <button onclick="toggleAreaManager()" style="padding:7px 13px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #c8ddc8;background:#fff;color:#2d6a2d;font-family:inherit">⚙️ Add / Remove Area</button>
     </div>
-    <div class="items-list" id="praise-list"></div>
-    <div style="margin-top:14px;text-align:center;">
-      <button class="add-btn" onclick="addSongCard('praise')" style="margin:0 auto;">+ Add Another Song</button>
+    <div id="areaManager" style="display:none;background:#fff;border:1px solid #d4e6d4;border-radius:10px;padding:14px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;color:#2d6a2d;margin-bottom:10px">Manage Areas</div>
+      <div id="areaList" style="margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="newAreaInput" placeholder="New area name..." style="flex:1;padding:7px 10px;border:1px solid #c8ddc8;border-radius:7px;font-size:13px;font-family:inherit;background:#fafefa">
+        <button onclick="addArea()" style="padding:7px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:#2d6a2d;color:#fff;font-family:inherit">+ Add</button>
+      </div>
     </div>
+    <div class="sgrid" id="statsGrid"></div>
+    <div class="pipeline" id="pipelineGrid"></div>
   </div>
 
-  <!-- OFFERING -->
-  <div id="panel-offering" class="tab-panel offering-panel">
-    <div class="section-head">
-      <div class="section-icon">🙌</div>
-      <h2 id="offering-heading">Offering</h2>
-      <button class="add-btn" onclick="addOfferingCard()">+ Add Section</button>
+  <!-- MONTHLY REPORT -->
+  <div id="tab-report" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#4a7a4a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Area</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap" id="reportAreaBtns"></div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#4a7a4a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Month</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap" id="monthToggleBtns"></div>
+      </div>
+      <button style="padding:10px 24px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;border:none;background:#1a3a8a;color:#fff;font-family:inherit;align-self:flex-end" onclick="window.print()">🖨️ Export PDF</button>
     </div>
-    <div class="items-list" id="offering-list"></div>
-    <div style="margin-top:14px;text-align:center;">
-      <button class="add-btn" onclick="addOfferingCard()" style="margin:0 auto;">+ Add Another Section</button>
-    </div>
+    <div id="reportContent"></div>
   </div>
-
+</div>
 </div>
 
-<div class="export-bar">
-  <span class="export-hint">Auto-saved · Export for your team</span>
-  <span class="save-indicator" id="saveInd">✓ Saved</span>
-  <button class="btn-export" id="exportBtn" onclick="exportPDF()">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/></svg>
-    Export PDF
-  </button>
-</div>
+<div class="toast" id="toast"></div>
 
 <script>
-// ─── ICONS ────────────────────────────────────────────────────────────────────
-const YT_SVG_INLINE = '<svg class="yt-icon" viewBox="0 0 24 24" fill="#FF0000"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.75 15.5V8.5l6.25 3.5-6.25 3.5z"/></svg>';
-const YT_SVG = `<svg class="yt-icon" viewBox="0 0 24 24" fill="#FF0000"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.75 15.5V8.5l6.25 3.5-6.25 3.5z"/></svg>`;
+const CHECKS = [
+  {id:'c_sun3m',pts:1},{id:'c_sun1m',pts:1},{id:'c_sun1w',pts:3},
+  {id:'c_bac3m',pts:1},{id:'c_bac1m',pts:1},{id:'c_bac1w',pts:3},
+  {id:'c_fr1',pts:10},{id:'c_fr2',pts:10},{id:'c_fr3',pts:10},{id:'c_fr4',pts:20},{id:'c_fr5',pts:50},
+  {id:'c_co1',pts:10},{id:'c_co2',pts:10},{id:'c_co3',pts:20},
+  {id:'c_ca1',pts:20},{id:'c_ca2',pts:30},
+  {id:'c_sp1',pts:20},{id:'c_sp2',pts:20},{id:'c_sp3',pts:20},{id:'c_sp4',pts:20},{id:'c_sp5',pts:50},{id:'c_cd1',pts:10},{id:'c_cd2',pts:30}
+];
+const CHECK_LABELS = {
+  c_sun3m:'Sunday (past 3 months)',c_sun1m:'Sunday (past month)',c_sun1w:'Sunday (past week)',
+  c_bac3m:'Bacenta (past 3 months)',c_bac1m:'Bacenta (past month)',c_bac1w:'Bacenta (past week)',
+  c_fr1:'Has one member friend',c_fr2:'Has one leader friend',c_fr3:'New church friend this month',
+  c_fr4:'Active in ministry team',c_fr5:'Friendship with a Bishop',
+  c_co1:'IC with Ekow (3 months)',c_co2:'S.A.T or Leaders meeting',c_co3:'Received correction well',
+  c_ca1:'Ams/NL camp (3 months)',c_ca2:'International camp/conference',
+  c_sp1:'Free from worldly lifestyle',c_sp2:'Prayer & Bible lifestyle',
+  c_sp3:'Listens to FL/BDHM weekly',c_sp4:'Interest in Christian books',c_sp5:'Active tithe payer',c_cd1:'Finished New Believers School',c_cd2:'Governor'
+};
+const LEVELS={
+  1:{label:'Fairweather',cls:'kl1',dot:'d1',ph:'ph1',color:'#e07030'},
+  2:{label:'Situational',cls:'kl2',dot:'d2',ph:'ph2',color:'#d4a017'},
+  3:{label:'Non-Situational',cls:'kl3',dot:'d3',ph:'ph3',color:'#28a745'},
+  4:{label:'Marital',cls:'kl4',dot:'d4',ph:'ph4',color:'#0d6efd'}
+};
 
-// ─── STORAGE KEY ──────────────────────────────────────────────────────────────
-const BASE_KEY = 'goye_amsterdam_';
-function storeKey() { return BASE_KEY + currentMonth().replace(' ','_'); }
-
-function currentMonth() {
-  return document.getElementById('monthSelect')?.value || 'May';
+function scoreToLevel(s){
+  if(s>=175)return 4;
+  if(s>=100)return 3;
+  if(s>=51)return 2;
+  return 1;
 }
 
-// ─── DEFAULT STATE ────────────────────────────────────────────────────────────
-function makeDefaultState() {
-  return {
-    prayer:  Array.from({length:4}, (_,i) => makePrayerItem()),
-    worship: Array.from({length:4}, (_,i) => makeSongItem()),
-    praise:    Array.from({length:4}, (_,i) => makeSongItem()),
-    offering:  Array.from({length:1}, (_,i) => makeOfferingItem()),
-  };
-}
-
-function makePrayerItem() {
-  return { id:uid(), title:'', yt:'', music:[''], pairs:[{point:'',scripture:''}], time:'' };
-}
-function makeOfferingItem() {
-  return { id:uid(), title:'', pairs:[{point:'',scripture:''}], time:'', reference:'', minute:'' };
-}
-function makeSongItem() {
-  return { id:uid(), title:'', yt:'', time:'' };
-}
-
-// ─── SAVE / LOAD ──────────────────────────────────────────────────────────────
-function loadState() {
+function pad(n){return String(n).padStart(3,'0')}
+let members=JSON.parse(localStorage.getItem('sof_members')||'[]');
+let reviews=JSON.parse(localStorage.getItem('sof_reviews')||'{}');
+let currentId=null;
+let nextNum=members.length?Math.max(...members.map(m=>parseInt(m.num||0)))+1:1;
+function saveData(){
   try {
-    const raw = localStorage.getItem(storeKey());
-    return raw ? JSON.parse(raw) : makeDefaultState();
-  } catch { return makeDefaultState(); }
+    localStorage.setItem('sof_members', JSON.stringify(members));
+    localStorage.setItem('sof_reviews', JSON.stringify(reviews));
+  } catch(e) {
+    toast('❌ Save failed — storage full');
+  }
 }
 
-function saveState() {
-  localStorage.setItem(storeKey(), JSON.stringify(collectState()));
-  const ind = document.getElementById('saveInd');
-  ind.classList.add('show');
-  clearTimeout(ind._t);
-  ind._t = setTimeout(() => ind.classList.remove('show'), 1800);
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+
+function renderMemberList(){
+  const f=document.getElementById('areaFilter').value;
+  const filtered=f==='all'?members:members.filter(m=>m.area===f);
+  const list=document.getElementById('memberList');
+  if(!filtered.length){list.innerHTML='<div class="empty">No members yet</div>';return;}
+  list.innerHTML=filtered.map(m=>`<div class="mitem${m.id===currentId?' active':''}" onclick="loadMember('${m.id}')">
+    <span>${m.firstName||'—'} ${m.surname||''}<br><span class="mnum">#${m.num}</span></span>
+    <span class="abadge ${m.area==='Amsterdam Zuid'?'az':'azo'}">${m.area==='Amsterdam Zuid'?'Zuid':'Zuidoost'}</span>
+  </div>`).join('');
 }
 
-let _saveTimer;
-function scheduleSave() { clearTimeout(_saveTimer); _saveTimer = setTimeout(saveState, 500); }
-
-// ─── COLLECT STATE FROM DOM ───────────────────────────────────────────────────
-function collectState() {
-  return {
-    prayer:  collectPrayer(),
-    worship: collectSongs('worship'),
-    praise:    collectSongs('praise'),
-    offering:  collectOffering(),
-  };
+function loadMember(id){
+  const m=members.find(x=>x.id===id);if(!m)return;
+  currentId=id;
+  document.getElementById('firstName').value=m.firstName||'';
+  document.getElementById('surname').value=m.surname||'';
+  document.getElementById('age').value=m.age||'';
+  document.getElementById('dob').value=m.dob||m.birthday||'';
+  document.getElementById('socialMedia').value=m.socialMedia||'';
+  document.getElementById('address').value=m.address||'';
+  document.getElementById('area').value=m.area||'Amsterdam Zuid';
+  document.getElementById('commitment').value=m.commitment||'1';
+  updateCommitmentDisplay(m.commitment||'1');
+  document.getElementById('memberNumDisplay').textContent='#'+m.num;
+  updateAvatar();
+  loadReviewForm(id);
+  renderMemberList();
+  renderMemberSummary(id);
 }
 
-function collectPrayer() {
-  return [...document.querySelectorAll('#prayer-list .prayer-card')].map(c => ({
-    id:       c.dataset.id,
-    title:    c.querySelector('.p-title')?.value    || '',
-    yt:       c.querySelector('.p-yt')?.value       || '',
-    music:    [...c.querySelectorAll('.music-input')].map(i => i.value),
-    time:     c.querySelector('.item-time')?.value || '',
-    pairs:    [...c.querySelectorAll('.pair-group')].map(g => ({
-      point:     g.querySelector('.point-input')?.value     || '',
-      scripture: g.querySelector('.scripture-input')?.value || '',
-    })),
-  }));
-}
-
-function collectOffering() {
-  return [...document.querySelectorAll('#offering-list .offering-card')].map(c => ({
-    id:         c.dataset.id,
-    title:      c.querySelector('.p-title')?.value       || '',
-    reference:  c.querySelector('.o-reference')?.value    || '',
-    minute:     c.querySelector('.o-minute')?.value       || '',
-    time:       c.querySelector('.item-time')?.value      || '',
-    pairs:      [...c.querySelectorAll('.pair-group')].map(g => ({
-      point:     g.querySelector('.point-input')?.value     || '',
-      scripture: g.querySelector('.scripture-input')?.value || '',
-    })),
-  }));
-}
-
-function collectSongs(sec) {
-  return [...document.querySelectorAll(`#${sec}-list .song-card`)].map(c => ({
-    id:     c.dataset.id,
-    title:  c.querySelector('.s-title')?.value  || '',
-    yt:     c.querySelector('.s-yt')?.value     || '',
-    time:   c.querySelector('.item-time')?.value  || '',
-  }));
-}
-
-// ─── RENDER ───────────────────────────────────────────────────────────────────
-function renderAll(state) {
-  renderPrayer(state.prayer);
-  renderSongs('worship',  state.worship);
-  renderSongs('praise',   state.praise);
-  renderOffering(state.offering || [makeOfferingItem()]);
-  updateHeadings();
-}
-
-function renderPrayer(items) {
-  const el = document.getElementById('prayer-list');
-  el.innerHTML = '';
-  items.forEach((item, i) => el.appendChild(buildPrayerCard(item, i)));
-}
-
-function renderOffering(items) {
-  const el = document.getElementById('offering-list');
-  el.innerHTML = '';
-  items.forEach((item, i) => el.appendChild(buildOfferingCard(item, i)));
-}
-
-function renderSongs(sec, items) {
-  const el = document.getElementById(`${sec}-list`);
-  el.innerHTML = '';
-  items.forEach((item, i) => el.appendChild(buildSongCard(sec, item, i)));
-}
-
-// ─── OFFERING CARD ───────────────────────────────────────────────────────────
-function buildOfferingCard(item, idx) {
-  const d = document.createElement('div');
-  d.className = 'card offering-card';
-  d.dataset.id = item.id;
-  const pairs = (item.pairs && item.pairs.length) ? item.pairs : [{point:'',scripture:''}];
-  const pairsHTML = pairs.map((pair,i) => offeringScriptureRow(pair,i)).join('');
-  d.innerHTML = `
-    <button class="del-btn" onclick="deleteOfferingCard('${item.id}')" title="Remove">×</button>
-    <div class="p-card-top">
-      <div class="item-num">${idx+1}</div>
-      <div>
-        <div class="field-label">Offering Title</div>
-        <input type="text" class="p-title" placeholder="e.g. Tithes & Offering, First Fruits…" value="${esc(item.title)}" oninput="scheduleSave()"/>
-      </div>
-    </div>
-    <!-- Reference link + minute -->
-    <div style="display:grid;grid-template-columns:1fr 140px;gap:10px;margin-bottom:12px;">
-      <div>
-        <div class="field-label">🔗 Reference Link</div>
-        <div class="yt-wrap">${YT_SVG}<input type="url" class="o-reference" placeholder="https://…" value="${esc(item.reference||'')}" oninput="scheduleSave()" style="padding-left:32px;"/></div>
-      </div>
-      <div>
-        <div class="field-label">📋 Minute</div>
-        <input type="text" class="o-minute" placeholder="e.g. 3" value="${esc(item.minute||'')}" oninput="scheduleSave()" style="width:100%;"/>
-      </div>
-    </div>
-
-    <div class="sub-section">
-      <div class="sub-section-head">
-        <span class="sub-section-label">📖 Scriptures</span>
-        <button class="sub-add-btn" onclick="addPair(this)">+ Add Scripture</button>
-      </div>
-      <div class="pairs-list">${pairsHTML}</div>
-    </div>
-    <div class="time-row">
-      <div class="field-label">⏱ Duration (mins)</div>
-      <input type="text" class="time-input item-time" placeholder="e.g. 15" value="${esc(item.time||'')}" oninput="scheduleSave()"/>
-      <span class="time-hint">minutes</span>
-    </div>
-  `;
-  return d;
-}
-
-// ─── PRAYER CARD ─────────────────────────────────────────────────────────────
-function buildPrayerCard(item, idx) {
-  const d = document.createElement('div');
-  d.className = 'card prayer-card';
-  d.dataset.id = item.id;
-
-  const pairs = (item.pairs && item.pairs.length) ? item.pairs : [{point:'',scripture:''}];
-  const pairsHTML = pairs.map((pair,i) => pairRow(pair,i)).join('');
-  const musicList = (item.music && item.music.length) ? item.music : [''];
-  const musicHTML = musicList.map((m,i) => musicRow(m,i)).join('');
-
-  d.innerHTML = `
-    <button class="del-btn" onclick="deleteCard('prayer','${item.id}')" title="Remove">×</button>
-
-    <!-- Title row -->
-    <div class="p-card-top">
-      <div class="item-num">${idx+1}</div>
-      <div>
-        <div class="field-label">Prayer Session</div>
-        <input type="text" class="p-title" placeholder="e.g. Opening Prayer, Intercession…" value="${esc(item.title)}" oninput="scheduleSave()"/>
-      </div>
-    </div>
-
-    <!-- YouTube -->
-    <div style="margin-bottom:10px;">
-      <div class="field-label">YouTube Link</div>
-      <div class="yt-wrap">${YT_SVG}<input type="url" class="p-yt" placeholder="https://www.youtube.com/watch?v=…" value="${esc(item.yt)}" oninput="scheduleSave()"/></div>
-    </div>
-
-    <!-- Prayer Music list -->
-    <div class="sub-section" style="margin-bottom:12px;">
-      <div class="sub-section-head">
-        <span class="sub-section-label">🎵 Prayer Music</span>
-        <button class="sub-add-btn" onclick="addMusic(this)">+ Add Music</button>
-      </div>
-      <div class="music-list">${musicHTML}</div>
-    </div>
-
-    <!-- Paired Points & Scriptures -->
-    <div class="sub-section">
-      <div class="sub-section-head">
-        <span class="sub-section-label">📌 Points &amp; Scriptures</span>
-        <button class="sub-add-btn" onclick="addPair(this)">+ Add Pair</button>
-      </div>
-      <div class="pairs-list">${pairsHTML}</div>
-    </div>
-    <div class="time-row">
-      <div class="field-label">⏱ Duration (mins)</div>
-      <input type="text" class="time-input item-time" placeholder="e.g. 15" value="${esc(item.time||'')}" oninput="scheduleSave()"/>
-      <span class="time-hint">minutes</span>
-    </div>
-  `;
-  return d;
-}
-
-function offeringScriptureRow(pair, idx) {
-  return `<div class="pair-group">
-    <button class="pair-del-btn" onclick="removePair(this)" title="Remove">×</button>
-    <div class="pair-row">
-      <input type="text" class="scripture-input" placeholder="e.g. Malachi 3:10 – Bring the whole tithe…" value="${esc(pair.scripture||'')}" oninput="scheduleSave()"/>
-    </div>
-  </div>`;
-}
-
-function pairRow(pair, idx) {
-  return `<div class="pair-group">
-    <button class="pair-del-btn" onclick="removePair(this)" title="Remove pair">×</button>
-    <div class="pair-row">
-      <div class="pair-inner-label point-lbl">📌 Prayer Point</div>
-      <input type="text" class="point-input" placeholder="Enter prayer point…" value="${esc(pair.point||'')}" oninput="scheduleSave()"/>
-    </div>
-    <div class="pair-row">
-      <div class="pair-inner-label script-lbl">📖 Scripture</div>
-      <input type="text" class="scripture-input" placeholder="e.g. John 3:16 – For God so loved the world…" value="${esc(pair.scripture||'')}" oninput="scheduleSave()"/>
-    </div>
-  </div>`;
-}
-
-function musicRow(url, idx) {
-  return `<div class="sub-item music-item">
-    ${YT_SVG_INLINE}
-    <input type="url" class="music-input" placeholder="https://www.youtube.com/watch?v=… (prayer music)" value="${esc(url||'')}" oninput="scheduleSave()" style="padding-left:32px;"/>
-    <button class="sub-del-btn" onclick="removeMusic(this)" title="Remove">×</button>
-  </div>`;
-}
-
-function addMusic(btn) {
-  const list = btn.closest('.prayer-card').querySelector('.music-list');
-  const div = document.createElement('div');
-  div.innerHTML = musicRow('', list.children.length);
-  list.appendChild(div.firstElementChild);
-  scheduleSave();
-}
-
-function removeMusic(btn) {
-  const list = btn.closest('.music-list');
-  if (list.children.length <= 1) {
-    list.querySelector('.music-input').value = '';
-    scheduleSave();
+function renderMemberSummary(id){
+  const m=members.find(x=>x.id===id);
+  if(!m){
+    document.getElementById('memberSummaryPanel').style.display='none';
+    document.getElementById('memberSummaryEmpty').style.display='flex';
     return;
   }
-  btn.closest('.music-item').remove();
-  scheduleSave();
-}
-
-function addPair(btn) {
-  const card = btn.closest('.prayer-card') || btn.closest('.offering-card');
-  const list = card.querySelector('.pairs-list');
-  const div = document.createElement('div');
-  div.innerHTML = pairRow({point:'',scripture:''}, list.children.length);
-  list.appendChild(div.firstElementChild);
-  scheduleSave();
-}
-
-function removePair(btn) {
-  const list = btn.closest('.pairs-list');
-  if (list.children.length <= 1) {
-    list.querySelector('.point-input').value = '';
-    list.querySelector('.scripture-input').value = '';
-    scheduleSave();
-    return;
-  }
-  btn.closest('.pair-group').remove();
-  scheduleSave();
-}
-
-// ─── SONG CARD ────────────────────────────────────────────────────────────────
-function buildSongCard(sec, item, idx) {
-  const d = document.createElement('div');
-  d.className = 'card song-card';
-  d.dataset.id = item.id;
-  d.innerHTML = `
-    <button class="del-btn" onclick="deleteCard('${sec}','${item.id}')" title="Remove">×</button>
-    <div class="row-top">
-      <div class="item-num">${idx+1}</div>
-      <div>
-        <div class="field-label">Song Title</div>
-        <input type="text" class="s-title" placeholder="Enter song title…" value="${esc(item.title)}" oninput="scheduleSave()" autocomplete="off"/>
+  document.getElementById('memberSummaryPanel').style.display='block';
+  document.getElementById('memberSummaryEmpty').style.display='none';
+  const lv=LEVELS[m.commitment||1];
+  // Get latest review
+  const memberReviews=reviews[id]||{};
+  const latestMonth=Object.keys(memberReviews).sort().reverse()[0];
+  let score=0;
+  if(latestMonth){CHECKS.forEach(c=>{if(memberReviews[latestMonth][c.id])score+=c.pts;});}
+  const totalReviews=Object.keys(memberReviews).length;
+  document.getElementById('memberSummaryContent').innerHTML=`
+    <div style="text-align:center;padding:16px 0;border-bottom:1px solid #eef5ee;margin-bottom:14px">
+      <div style="font-size:48px;font-weight:800;color:${lv.color};line-height:1">${score}</div>
+      <div style="font-size:13px;color:#7a9a7a;margin-top:4px">Latest score / 330 pts</div>
+      <div style="margin-top:10px"><span style="padding:6px 16px;border-radius:20px;font-size:14px;font-weight:700;background:${lv.color}22;color:${lv.color}">Level ${m.commitment||1} — ${lv.label}</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="background:#f8fdf8;border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:#2d6a2d">${totalReviews}</div>
+        <div style="font-size:11px;color:#7a9a7a;margin-top:2px">Reviews done</div>
+      </div>
+      <div style="background:#f8fdf8;border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:#2d6a2d">${m.age||'—'}</div>
+        <div style="font-size:11px;color:#7a9a7a;margin-top:2px">Age</div>
       </div>
     </div>
-    <div style="margin-bottom:10px;">
-      <div class="field-label">YouTube Link</div>
-      <div class="yt-wrap">${YT_SVG}<input type="url" class="s-yt" placeholder="https://www.youtube.com/watch?v=…" value="${esc(item.yt)}" oninput="scheduleSave()"/></div>
-    </div>
-    <div class="time-row">
-      <div class="field-label">⏱ Duration (mins)</div>
-      <input type="text" class="time-input item-time" placeholder="e.g. 15" value="${esc(item.time||'')}" oninput="scheduleSave()"/>
-      <span class="time-hint">minutes</span>
-    </div>
+    <div style="margin-top:12px;font-size:12px;color:#7a9a7a;text-align:center">${latestMonth?'Last reviewed: '+new Date(latestMonth+'-01').toLocaleString('default',{month:'long',year:'numeric'}):'No reviews yet'}</div>
+    ${m.socialMedia?`<div style="margin-top:12px;text-align:center"><a href="${m.socialMedia}" target="_blank" style="font-size:13px;color:#2d6a2d;font-weight:600;text-decoration:none">🔗 Social Media</a></div>`:''}
   `;
-  return d;
 }
 
-// ─── INTERACTIONS ─────────────────────────────────────────────────────────────
-function flipToggle(track) {
-  track.classList.toggle('on');
-  track.nextElementSibling.textContent = track.classList.contains('on') ? 'Yes' : 'No';
-  scheduleSave();
+function updateAvatar(){
+  const c=document.getElementById('avatarCircle');
+  const fn=document.getElementById('firstName').value;
+  const sn=document.getElementById('surname').value;
+  const initials=(fn?fn[0].toUpperCase():'')+(sn?sn[0].toUpperCase():'');
+  c.textContent=initials||'?';
 }
 
-function toggleLyricsBtn(btn) {
-  const area = btn.closest('.song-card').querySelector('.lyrics-area');
-  area.classList.toggle('open');
-  btn.classList.toggle('open');
-  btn.textContent = area.classList.contains('open') ? '− Hide Lyrics' : '+ Add Lyrics';
+
+
+function newMember(){
+  currentId=null;
+  ['firstName','surname','age','address','socialMedia'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('dob').value='';
+  const areaEl=document.getElementById('area');
+  if(areaEl.options.length) areaEl.selectedIndex=0;
+  document.getElementById('commitment').value='1';
+  const cd=document.getElementById('commitmentDisplay');
+  if(cd) cd.textContent='Level 1 — Fairweather';
+
+  document.getElementById('memberNumDisplay').textContent='#'+pad(nextNum);
+  document.getElementById('avatarCircle').innerHTML='?';
+  document.getElementById('reviewNoMember').style.display='block';
+  document.getElementById('reviewContent').style.display='none';
+  switchTab('record', document.querySelectorAll('.tab')[0]);
+  renderMemberList();
 }
 
-function switchTab(tab) {
-  ['prayer','worship','praise','offering'].forEach(t => {
-    document.getElementById('panel-'+t).classList.remove('active');
-    document.getElementById('btn-'+t).className = 'tab-btn';
+function saveMember(){
+  const fn=document.getElementById('firstName').value.trim();
+  const sn=document.getElementById('surname').value.trim();
+  if(!fn&&!sn){toast('⚠️ Enter at least a name');return;}
+  const data={firstName:fn,surname:sn,age:document.getElementById('age').value,dob:document.getElementById('dob').value,address:document.getElementById('address').value,area:document.getElementById('area').value,commitment:document.getElementById('commitment').value,socialMedia:document.getElementById('socialMedia').value.trim()};
+  if(currentId){
+    const idx=members.findIndex(x=>x.id===currentId);
+    
+    members[idx]={...members[idx],...data};
+    
+  } else {
+    const nm={id:Date.now().toString(),num:pad(nextNum),...data};
+    members.push(nm);currentId=nm.id;nextNum++;
+  }
+  saveData();renderAll();toast('✅ Member saved!');
+}
+
+function deleteMember(){
+  if(!currentId){toast('⚠️ Select a member first');return;}
+  const m=members.find(x=>x.id===currentId);
+  if(!confirm(`Delete ${m.firstName} ${m.surname}?`))return;
+  members=members.filter(x=>x.id!==currentId);
+  delete reviews[currentId];
+  currentId=null;saveData();newMember();renderAll();toast('🗑 Member deleted');
+}
+
+function loadReviewForm(memberId){
+  document.getElementById('reviewNoMember').style.display='none';
+  document.getElementById('reviewContent').style.display='block';
+  const m=members.find(x=>x.id===memberId);
+  const fullName=((m.firstName||'')+(m.surname?' '+m.surname:'')).trim()||'—';
+  document.getElementById('scoreName').textContent=fullName;
+  const now=new Date();
+  const monthKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('reviewMonth').value=monthKey;
+  const saved=reviews[memberId]&&reviews[memberId][monthKey];
+  CHECKS.forEach(c=>{
+    document.getElementById(c.id).checked=saved?!!(saved[c.id]):false;
   });
-  document.getElementById('panel-'+tab).classList.add('active');
-  document.getElementById('btn-'+tab).className = 'tab-btn act-'+tab;
+  calcScore();
 }
 
-// ─── ADD / DELETE CARDS ───────────────────────────────────────────────────────
-function offeringMusicRow(url, idx) {
-  return `<div class="sub-item offering-music-item">
-    ${YT_SVG_INLINE}
-    <input type="url" class="offering-music-input" placeholder="https://www.youtube.com/watch?v=… (offering music)" value="${esc(url||'')}" oninput="scheduleSave()" style="padding-left:32px;flex:1;"/>
-    <button class="sub-del-btn" onclick="removeOfferingMusic(this)" title="Remove">×</button>
-  </div>`;
+function updateCommitmentDisplay(lvl){
+  const lv=LEVELS[lvl];
+  const el=document.getElementById('commitmentDisplay');
+  if(el) el.textContent='Level '+lvl+' — '+lv.label;
+  document.getElementById('commitment').value=String(lvl);
 }
 
-function addOfferingMusic(btn) {
-  const list = btn.closest('.offering-card').querySelector('.offering-music-list');
-  const div = document.createElement('div');
-  div.innerHTML = offeringMusicRow('', list.children.length);
-  list.appendChild(div.firstElementChild);
-  scheduleSave();
-}
-
-function removeOfferingMusic(btn) {
-  const list = btn.closest('.offering-music-list');
-  if (list.children.length <= 1) {
-    list.querySelector('.offering-music-input').value = '';
-    scheduleSave();
-    return;
+function calcScore(){
+  let score=0;
+  CHECKS.forEach(c=>{if(document.getElementById(c.id).checked)score+=c.pts;});
+  const lvl=scoreToLevel(score);
+  const lv=LEVELS[lvl];
+  document.getElementById('scoreNum').textContent=score;
+  document.getElementById('scoreBadge').className='level-badge '+lv.cls;
+  document.getElementById('scoreBadge').textContent='L'+lvl+' '+lv.label;
+  const pct=Math.min(100,(score/280)*100);
+  document.getElementById('scoreBarInner').style.width=pct+'%';
+  document.getElementById('scoreBarInner').style.background=lv.color;
+  if(currentId){
+    const m=members.find(x=>x.id===currentId);
+    if(m){m.commitment=String(lvl);updateCommitmentDisplay(lvl);saveData();}
   }
-  btn.closest('.offering-music-item').remove();
-  scheduleSave();
 }
 
-function addOfferingCard() {
-  const state = collectState();
-  state.offering = state.offering || [];
-  state.offering.push(makeOfferingItem());
-  renderOffering(state.offering);
-  saveState();
+function saveReview(){
+  if(!currentId){toast('⚠️ Select a member first');return;}
+  const monthKey=document.getElementById('reviewMonth').value;
+  if(!monthKey){toast('⚠️ Select a month');return;}
+  if(!reviews[currentId])reviews[currentId]={};
+  const data={};
+  CHECKS.forEach(c=>{data[c.id]=document.getElementById(c.id).checked;});
+  reviews[currentId][monthKey]=data;
+  saveData();renderAll();toast('✅ Review saved for '+monthKey);
 }
 
-function deleteOfferingCard(id) {
-  const state = collectState();
-  state.offering = (state.offering || []).filter(x => x.id !== id);
-  renderOffering(state.offering);
-  saveState();
-  reNumber('offering');
+function renderPipeline(){
+  const f=pipelineArea;
+  const filtered=f==='all'?members:members.filter(m=>m.area===f);
+  const byLevel={1:[],2:[],3:[],4:[]};
+  filtered.forEach(m=>byLevel[m.commitment||1].push(m));
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="scard"><div class="snum">${filtered.length}</div><div class="slbl">Total Members</div></div>
+    <div class="scard"><div class="snum" style="color:#e07030">${byLevel[1].length}</div><div class="slbl">Fairweather</div></div>
+    <div class="scard"><div class="snum" style="color:#28a745">${byLevel[3].length+byLevel[4].length}</div><div class="slbl">Committed (L3+L4)</div></div>
+    <div class="scard"><div class="snum" style="color:#0d6efd">${byLevel[4].length}</div><div class="slbl">Marital Commitment</div></div>`;
+  const pl={1:'Fairweather',2:'Situational',3:'Non-Situational',4:'Marital'};
+  document.getElementById('pipelineGrid').innerHTML=[1,2,3,4].map(l=>`
+    <div class="pcol"><div class="phead ph${l}"><span>L${l} · ${pl[l]}</span><span class="pcnt">${byLevel[l].length}</span></div>
+    <div class="pbody">${byLevel[l].length?byLevel[l].map(m=>`<div class="pmember" onclick="loadMember('${m.id}');switchTab('record',document.querySelectorAll('.tab')[0])">
+      <div class="pm-name">${m.firstName||'—'} ${m.surname||''}</div>
+      <div class="pm-meta">#${m.num} · ${m.area==='Amsterdam Zuid'?'Zuid':'Zuidoost'}</div>
+    </div>`).join(''):'<div class="empty">None</div>'}</div></div>`).join('');
 }
 
-function addPrayerCard() {
-  const state = collectState();
-  state.prayer.push(makePrayerItem());
-  renderPrayer(state.prayer);
-  saveState();
+let _reportArea = 'all';
+
+function renderReportAreaBtns(){
+  const all = ['all', ...areas];
+  document.getElementById('reportAreaBtns').innerHTML = all.map(a => {
+    const active = a === _reportArea;
+    return `<button onclick="setReportArea('${a}')" style="padding:8px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid #c8ddc8;background:${active?'#2d6a2d':'#fff'};color:${active?'#fff':'#4a7a4a'}">${a==='all'?'All Areas':a}</button>`;
+  }).join('');
 }
 
-function addSongCard(sec) {
-  const state = collectState();
-  state[sec].push(makeSongItem());
-  renderSongs(sec, state[sec]);
-  saveState();
+function setReportArea(a){
+  _reportArea = a;
+  renderReportAreaBtns();
+  renderReport();
 }
 
-function deleteCard(sec, id) {
-  const state = collectState();
-  state[sec] = state[sec].filter(x => x.id !== id);
-  if (sec === 'prayer') renderPrayer(state.prayer);
-  else renderSongs(sec, state[sec]);
-  saveState();
-  reNumber(sec);
+function renderMonthButtons(){
+  const allMonths=[...new Set(Object.values(reviews).flatMap(r=>Object.keys(r)))].sort().reverse();
+  const now=new Date();
+  const thisMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  if(!allMonths.includes(thisMonth)) allMonths.unshift(thisMonth);
+  const current=document.getElementById('reportMonth')?document.getElementById('reportMonth').value||thisMonth:thisMonth;
+  window._reportMonth=window._reportMonth||thisMonth;
+  document.getElementById('monthToggleBtns').innerHTML=allMonths.map(m=>{
+    const d=new Date(m+'-01');
+    const label=d.toLocaleString('default',{month:'long',year:'numeric'});
+    const active=m===window._reportMonth;
+    return `<button onclick="setReportMonth('${m}')" style="padding:8px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:inherit;background:${active?'#2d6a2d':'#fff'};color:${active?'#fff':'#4a7a4a'};border:1px solid #c8ddc8">${label}</button>`;
+  }).join('');
 }
 
-function reNumber(sec) {
-  document.querySelectorAll(`#${sec}-list .item-num`).forEach((el,i) => el.textContent = i+1);
+function setReportMonth(m){
+  window._reportMonth=m;
+  renderMonthButtons();
+  renderReport();
 }
 
-// ─── MONTH CHANGE ─────────────────────────────────────────────────────────────
-function changeMonth() {
-  saveState();               // save current month first
-  const state = loadState(); // load new month (or fresh default)
-  renderAll(state);
+function renderReport(){
+  const monthKey=window._reportMonth||(()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`})();
+  const [y,mo]=monthKey.split('-');
+  const monthName=new Date(y,mo-1,1).toLocaleString('default',{month:'long',year:'numeric'});
+  const filteredMembers = _reportArea==='all' ? members : members.filter(m=>m.area===_reportArea);
+  const reviewed=filteredMembers.filter(m=>reviews[m.id]&&reviews[m.id][monthKey]).length;
+  let html=`<div style="background:#fff;border-radius:12px;border:1px solid #d4e6d4;padding:18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:22px;font-weight:700;color:#2d6a2d">🐑 State of the Flock — ${monthName}</div>
+      <div style="font-size:13px;color:#7a9a7a;margin-top:3px">Go Ye Amsterdam · ${_reportArea==='all'?'All Areas':_reportArea} · ${reviewed} of ${filteredMembers.length} members reviewed</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">`;
+  [1,2,3,4].forEach(l=>{
+    const lv=LEVELS[l];
+    const cnt=members.filter(m=>m.commitment==l).length;
+    html+=`<div style="border:2px solid ${lv.color};border-radius:8px;padding:10px 14px;text-align:center">
+      <div style="font-size:32px;font-weight:800;color:${lv.color};line-height:1">${cnt}</div>
+      <div style="font-size:12px;font-weight:600;color:#4a7a4a;margin-top:2px">L${l} ${['Fairweather','Situational','Non-Situational','Marital'][l-1]}</div>
+    </div>`;
+  });
+  html+=`</div></div>`;
+  html+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">`;
+  [1,2,3,4].forEach(l=>{
+    const lv=LEVELS[l];
+    const grp=filteredMembers.filter(m=>m.commitment==l);
+    html+=`<div style="border-radius:10px;border:1px solid #d4e6d4;overflow:hidden">
+      <div style="padding:13px 15px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:space-between" class="ph${l}">
+        <span>L${l} · ${['Fairweather','Situational','Non-Situational','Marital'][l-1]}</span>
+        <span style="background:rgba(0,0,0,.12);border-radius:20px;padding:2px 9px;font-size:13px">${grp.length}</span>
+      </div>
+      <div style="padding:10px;background:#fff;min-height:60px">
+        ${grp.length?grp.map(m=>{
+          let sc=0;const rev=reviews[m.id]&&reviews[m.id][monthKey];
+          if(rev)CHECKS.forEach(c=>{if(rev[c.id])sc+=c.pts;});
+          return `<div style="padding:9px 11px;border-radius:7px;font-size:14px;margin-bottom:6px;border:1px solid #eef5ee;background:#fafefa">
+            <div style="font-weight:700;color:#1a2e1a">${m.firstName} ${m.surname}</div>
+            <div style="font-size:12px;color:#7a9a7a;margin-top:2px">#${m.num}${rev?' · '+sc+' pts':' · not reviewed'}</div>
+          </div>`;
+        }).join(''):'<div style="text-align:center;padding:16px;color:#9aaa9a;font-size:13px">None</div>'}
+      </div>
+    </div>`;
+  });
+  html+=`</div>`;
+  document.getElementById('reportContent').innerHTML=html;
 }
 
-function updateHeadings() {
-  const m = currentMonth();
-  const y = new Date().getFullYear();
-  document.getElementById('prayer-heading').textContent  = `Prayer — ${m} ${y}`;
-  document.getElementById('worship-heading').textContent = `Worship Songs — ${m} ${y}`;
-  document.getElementById('praise-heading').textContent    = `Praise Songs — ${m} ${y}`;
-  document.getElementById('offering-heading').textContent  = `Offering — ${m} ${y}`;
+function renderAll(){renderMemberList();renderPipeline();renderReport();}
+
+function switchTab(name,btn){
+  ['record','review','pipeline','report'].forEach(t=>document.getElementById('tab-'+t).style.display='none');
+  document.getElementById('tab-'+name).style.display='block';
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  if(name==='report'){
+    const now=new Date();
+    const mk=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    if(!window._reportMonth)window._reportMonth=mk;
+    renderReportAreaBtns();
+    renderMonthButtons();
+    renderReport();
+  }
 }
 
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
-function uid() { return '_'+Math.random().toString(36).substr(2,9); }
-function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+let areas = JSON.parse(localStorage.getItem('sof_areas') || '["Amsterdam Zuid","Amsterdam Zuidoost"]');
+let pipelineArea = 'all';
 
-// ─── PDF EXPORT ───────────────────────────────────────────────────────────────
-async function exportPDF() {
-  const btn = document.getElementById('exportBtn');
-  btn.disabled = true; btn.textContent = '⏳ Building…';
+function saveAreas(){localStorage.setItem('sof_areas', JSON.stringify(areas));}
 
-  try {
-    // Wait up to 5 seconds for jsPDF to load
-    let waited = 0;
-    while(!window.jspdf && waited < 50){ await new Promise(r=>setTimeout(r,100)); waited++; }
-    if(!window.jspdf){ throw new Error('PDF library could not load. Please check your internet connection.'); }
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const PW=210,PH=297,ML=15,MR=15,CW=PW-ML-MR;
-    let y=0;
-
-    const COLS = {
-      prayer:  {r:[122,79,0],   bg:[245,230,200], bd:[212,170,112]},
-      worship: {r:[26,92,56],   bg:[200,228,208], bd:[142,200,168]},
-      praise:   {r:[139,32,32],  bg:[232,206,206], bd:[192,152,152]},
-      offering:{r:[74,110,58],   bg:[212,234,204], bd:[138,186,120]},
-    };
-
-    function needY(h){ if(y+h>PH-14){doc.addPage();y=20;} }
-
-    function drawHeader(){
-      doc.setFillColor(107,79,10);  doc.rect(0,0,PW,36,'F');
-      doc.setFillColor(154,112,16); doc.rect(PW*0.12,0,PW*0.76,36,'F');
-      doc.setFillColor(196,154,20); doc.rect(PW*0.28,0,PW*0.44,36,'F');
-      doc.setFillColor(240,200,64); doc.rect(0,35.5,PW,1.5,'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(20); doc.setTextColor(255,248,231);
-      doc.text('Go Ye Amsterdam',PW/2,15,{align:'center'});
-      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(255,240,190);
-      doc.text('WORSHIP DEPARTMENT  ·  SONG DATABASE',PW/2,22,{align:'center'});
-      doc.setFillColor(30,20,0);
-      doc.rect(PW/2-20,26,40,8,'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(255,240,190);
-      const mon = currentMonth().toUpperCase();
-      doc.text(`${mon} ${new Date().getFullYear()}`,PW/2,31.5,{align:'center'});
-      y=46;
-    }
-
-    drawHeader();
-    const state = collectState();
-
-    const sections = [
-      {key:'prayer',   label:'PRAYER',        items:state.prayer        ||[]},
-      {key:'worship',  label:'WORSHIP SONGS', items:state.worship       ||[]},
-      {key:'praise',   label:'PRAISE SONGS',  items:state.praise        ||[]},
-      {key:'offering', label:'OFFERING',       items:state.offering      ||[]},
-    ];
-
-    sections.forEach((sec,si)=>{
-      if(si>0){doc.addPage();drawHeader();}
-      const C=COLS[sec.key];
-      const[r,g,b]=C.r;
-
-      // Section heading strip
-      doc.setFillColor(...C.bg);
-      doc.rect(ML,y,CW,11,'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(r,g,b);
-      doc.text(sec.label+'  —  '+currentMonth().toUpperCase()+' '+new Date().getFullYear(),ML+5,y+7.8);
-      y+=16;
-
-      sec.items.forEach((item,idx)=>{
-        needY(28);
-        const cy=y;
-        let cx=cy+10;
-
-        // Number circle
-        doc.setFillColor(r,g,b);
-        doc.circle(ML+6,cy+7,4.5,'F');
-        doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(255,255,255);
-        doc.text(String(idx+1),ML+6,cy+9.2,{align:'center'});
-
-        // Title
-        doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(26,26,26);
-        doc.text(item.title||'(No title)',ML+14,cx);
-
-        // Duration badge
-        if(item.time){
-          const timeW=doc.getTextWidth('⏱ '+item.time+' mins')+6;
-          doc.setFillColor(...C.bg); doc.setDrawColor(...C.bd); doc.setLineWidth(0.3);
-          doc.rect(PW-MR-timeW-2,cx-5,timeW+2,6.5,'FD');
-          doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(r,g,b);
-          doc.text('⏱ '+item.time+' mins',PW-MR-timeW+1,cx);
-        }
-        cx+=8;
-
-        // YouTube link (prayer + worship + praise)
-        if(item.yt){
-          needY(7);
-          doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(200,0,0);
-          doc.text('▶',ML+5,cx);
-          doc.setFont('helvetica','normal'); doc.setTextColor(40,80,180);
-          const ytD=item.yt.length>64?item.yt.substring(0,61)+'…':item.yt;
-          doc.textWithLink(ytD,ML+11,cx,{url:item.yt});
-          doc.setDrawColor(40,80,180); doc.setLineWidth(0.2);
-          doc.line(ML+11,cx+0.9,ML+11+doc.getTextWidth(ytD),cx+0.9);
-          cx+=8;
-        }
-
-        // Prayer Music links (prayer only)
-        if(sec.key==='prayer' && item.music){
-          const tracks=(item.music||[]).filter(m=>m.trim());
-          if(tracks.length){
-            doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(r,g,b);
-            doc.text('PRAYER MUSIC',ML+5,cx); cx+=5;
-            tracks.forEach((m,mi)=>{
-              needY(7);
-              doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(200,0,0);
-              doc.text((mi+1)+'.',ML+5,cx);
-              doc.setFont('helvetica','normal'); doc.setTextColor(40,80,180);
-              const mD=m.length>62?m.substring(0,59)+'…':m;
-              doc.textWithLink(mD,ML+11,cx,{url:m});
-              doc.setDrawColor(40,80,180); doc.setLineWidth(0.2);
-              doc.line(ML+11,cx+0.9,ML+11+doc.getTextWidth(mD),cx+0.9);
-              cx+=6.5;
-            });
-            cx+=2;
-          }
-        }
-
-        // Prayer pairs (point + scripture)
-        if(sec.key==='prayer'){
-          const pairs=(item.pairs||[]).filter(p=>p.point||p.scripture);
-          pairs.forEach((pair,pi)=>{
-            needY(14);
-            doc.setFillColor(r,g,b);
-            doc.circle(ML+8,cx+1.5,3,'F');
-            doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(255,255,255);
-            doc.text(String(pi+1),ML+8,cx+3,{align:'center'});
-            cx+=2;
-            if(pair.point){
-              doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(r,g,b);
-              doc.text('POINT',ML+14,cx);
-              doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(40,30,10);
-              doc.splitTextToSize(pair.point,CW-22).forEach(l=>{doc.text(l,ML+14,cx+4);cx+=4.8;});
-              cx+=2;
-            }
-            if(pair.scripture){
-              doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(74,96,144);
-              doc.text('SCRIPTURE',ML+14,cx);
-              doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(74,96,144);
-              doc.splitTextToSize(pair.scripture,CW-22).forEach(l=>{doc.text(l,ML+14,cx+4);cx+=4.8;});
-              cx+=4;
-            }
-          });
-        }
-
-        // Offering: reference, minute, scriptures
-        if(sec.key==='offering'){
-          if(item.reference){
-            needY(7);
-            doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(r,g,b);
-            doc.text('REFERENCE:',ML+5,cx);
-            const rlw=doc.getTextWidth('REFERENCE: ');
-            doc.setFont('helvetica','normal'); doc.setTextColor(40,80,180);
-            const rD=item.reference.length>58?item.reference.substring(0,55)+'…':item.reference;
-            doc.textWithLink(rD,ML+5+rlw,cx,{url:item.reference});
-            doc.setDrawColor(40,80,180); doc.setLineWidth(0.2);
-            doc.line(ML+5+rlw,cx+0.9,ML+5+rlw+doc.getTextWidth(rD),cx+0.9);
-            cx+=7;
-          }
-          if(item.minute){
-            needY(7);
-            doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(r,g,b);
-            doc.text('MINUTE: ',ML+5,cx);
-            doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50);
-            doc.text(item.minute,ML+5+doc.getTextWidth('MINUTE: '),cx);
-            cx+=7;
-          }
-          const pairs=(item.pairs||[]).filter(p=>p.scripture);
-          if(pairs.length){
-            doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(r,g,b);
-            doc.text('SCRIPTURES',ML+5,cx); cx+=5;
-            pairs.forEach((pair,pi)=>{
-              needY(7);
-              doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(74,96,144);
-              doc.splitTextToSize((pi+1)+'. '+pair.scripture,CW-14).forEach(l=>{
-                doc.text(l,ML+7,cx); cx+=4.8;
-              });
-              cx+=2;
-            });
-          }
-        }
-
-        // Card border
-        doc.setFillColor(...C.bg.map(v=>Math.min(255,v+15)));
-        doc.setDrawColor(...C.bd); doc.setLineWidth(0.35);
-        doc.rect(ML,cy,CW,cx-cy+4,'S');
-        y=cx+8;
-      });
-    });
-
-    // Footers
-    const total=doc.internal.getNumberOfPages();
-    for(let p=1;p<=total;p++){
-      doc.setPage(p);
-      doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(180,170,155);
-      doc.text('© 2026 Go Ye Amsterdam — Worship List',ML,PH-7);
-      doc.text(`Page ${p} / ${total}`,PW-MR,PH-7,{align:'right'});
-      doc.setDrawColor(210,200,185); doc.setLineWidth(0.3);
-      doc.line(ML,PH-10,PW-MR,PH-10);
-    }
-
-    const mon = currentMonth();
-    doc.save(`GoYeAmsterdam_WorshipList_${mon}${new Date().getFullYear()}.pdf`);
-
-  } catch(err){ alert('Export failed: '+err.message+'\n\nCheck browser console for details.'); console.error(err); }
-
-  btn.disabled=false;
-  btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/></svg> Export PDF`;
+function renderAreaSelects(){
+  const opts = '<option value="all">All Areas</option>' + areas.map(a=>`<option value="${a}">${a}</option>`).join('');
+  document.getElementById('areaFilter').innerHTML = opts;
+  document.getElementById('area').innerHTML = areas.map(a=>`<option value="${a}">${a}</option>`).join('');
 }
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
-const sel = document.getElementById('monthSelect');
-// Restore last used month
-const savedMonth = localStorage.getItem('goye_current_month');
-if(savedMonth){ [...sel.options].forEach(o=>{ if(o.value===savedMonth) o.selected=true; }); }
-// On change: save old month data, load new month data, re-render everything
-sel.addEventListener('change', () => {
-  saveState();
-  localStorage.setItem('goye_current_month', currentMonth());
-  renderAll(migrateState(loadState()));
-});
-renderAll(migrateState(loadState()));
-
-// Ensure all items have every field, even if saved before that field was added
-function migrateState(state) {
-  const ensureTime = item => { if(item.time === undefined) item.time = ''; return item; };
-  const ensureMusic = item => { if(!item.music) item.music = ['']; return item; };
-  const ensurePairs = item => { if(!item.pairs) item.pairs = [{point:'',scripture:''}]; return item; };
-  (state.prayer  ||[]).forEach(i => { ensureTime(i); ensureMusic(i); ensurePairs(i); });
-  (state.worship ||[]).forEach(i => ensureTime(i));
-  (state.praise  ||[]).forEach(i => ensureTime(i));
-  (state.offering||[]).forEach(i => { ensureTime(i); ensurePairs(i); if(!i.reference) i.reference=''; if(!i.minute) i.minute=''; });
-  return state;
+function renderPipelineTabs(){
+  const tabs = document.getElementById('pipelineTabs');
+  const all = ['all',...areas];
+  tabs.innerHTML = all.map(a=>`<button onclick="setPipelineArea('${a}')" style="padding:10px 20px;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s;background:${pipelineArea===a?'#2d6a2d':'transparent'};color:${pipelineArea===a?'#fff':'#4a7a4a'}">${a==='all'?'All Areas':a}</button>`).join('');
 }
+
+function setPipelineArea(a){
+  pipelineArea=a;
+  renderPipelineTabs();
+  renderPipeline();
+}
+
+function renderAreaList(){
+  document.getElementById('areaList').innerHTML = areas.map((a,i)=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:#f8fdf8;border:1px solid #d4e6d4;border-radius:7px;margin-bottom:6px;font-size:13px">
+      <span>${a}</span>
+      <button onclick="removeArea(${i})" style="background:none;border:none;cursor:pointer;color:#c0392b;font-size:13px;font-weight:600;padding:2px 6px">✕</button>
+    </div>`).join('') || '<div style="font-size:12px;color:#9aaa9a;padding:4px 0">No areas added yet</div>';
+}
+
+function toggleAreaManager(){
+  const m = document.getElementById('areaManager');
+  const visible = m.style.display !== 'none';
+  m.style.display = visible ? 'none' : 'block';
+  if(!visible) renderAreaList();
+}
+
+function addArea(){
+  const input = document.getElementById('newAreaInput');
+  const val = input.value.trim();
+  if(!val){return;}
+  if(areas.includes(val)){alert('Area already exists');return;}
+  areas.push(val);
+  saveAreas();
+  input.value='';
+  renderAreaSelects();
+  renderPipelineTabs();
+  renderAreaList();
+}
+
+function removeArea(idx){
+  const name = areas[idx];
+  const inUse = members.some(m=>m.area===name);
+  if(inUse && !confirm(`${members.filter(m=>m.area===name).length} member(s) are in "${name}". Remove area anyway? Their area will need updating.`)) return;
+  areas.splice(idx,1);
+  saveAreas();
+  if(pipelineArea===name) pipelineArea='all';
+  renderAreaSelects();
+  renderPipelineTabs();
+  renderAreaList();
+}
+
+function calcAge(){
+  const dobVal = document.getElementById('dob').value;
+  if(!dobVal) return;
+  const today = new Date();
+  const birth = new Date(dobVal);
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if(monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
+  document.getElementById('age').value = age;
+}
+
+
+
+if(!members.length){
+  members=[
+    {id:'1',num:'001',firstName:'Amara',surname:'Boateng',age:'28',dob:'1997-03-14',address:'Beethovenstraat 12, Amsterdam',area:'Amsterdam Zuid',commitment:'3'},
+    {id:'2',num:'002',firstName:'David',surname:'Mensah',age:'34',dob:'1991-07-22',address:'Waalstraat 45, Amsterdam',area:'Amsterdam Zuid',commitment:'4'},
+    {id:'3',num:'003',firstName:'Grace',surname:'Owusu',age:'22',dob:'2003-11-05',address:'Anton de Komplein 8, Amsterdam',area:'Amsterdam Zuidoost',commitment:'1'},
+    {id:'4',num:'004',firstName:'Emmanuel',surname:'Asante',age:'41',dob:'1984-01-30',address:'Karspeldreef 3, Amsterdam',area:'Amsterdam Zuidoost',commitment:'2'}
+  ];nextNum=5;saveData();
+}
+renderAreaSelects();
+renderPipelineTabs();
+renderAll();
+// Auto-load first member so member number is always visible
+if(members.length) loadMember(members[0].id);
+else { document.getElementById('memberNumDisplay').textContent='#'+pad(nextNum); }
 </script>
 </body>
 </html>
